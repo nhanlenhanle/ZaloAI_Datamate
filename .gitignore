@@ -1,0 +1,31 @@
+# Byte-compiled / optimized / URL
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Pytest & tests
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# OS generated
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Heavy model weights & runtime data (Tải riêng hoặc mount lúc chạy)
+docker/models/
+thu_that/
+*.duckdb
+*.duckdb.wal
+/solve data/
+/data/
+/result/
+/tmp/

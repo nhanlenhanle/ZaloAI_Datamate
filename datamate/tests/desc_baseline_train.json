@@ -1,0 +1,370 @@
+{
+"đơn giá": [
+true,
+"unit_price"
+],
+"trạng thái đơn": [
+true,
+"status"
+],
+"tên hàng": [
+true,
+"product_name"
+],
+"ngày bán": [
+true,
+"order_date"
+],
+"đơn vị tính": [
+true,
+"unit"
+],
+"số lượng": [
+true,
+"qty"
+],
+"thành tiền sau giảm": [
+true,
+"line_amount"
+],
+"số lượng đã đổi ra đơn vị cơ bản": [
+true,
+"qty_base"
+],
+"mã đơn": [
+true,
+"order_id"
+],
+"tên khách (Khách lẻ nếu không lưu)": [
+true,
+"customer_name"
+],
+"tên hàng (file chỉ có mặt hàng có đơn vị lớn)": [
+true,
+"product_name"
+],
+"đơn vị lớn (thùng, hộp, tấn...)": [
+true,
+"big_unit"
+],
+"hệ số: số đơn vị cơ bản trong 1 đơn vị lớn": [
+true,
+"conv_factor"
+],
+"đơn vị cơ bản": [
+true,
+"base_unit"
+],
+"giờ đặt đơn (dòng trả hàng: lúc trả)": [
+true,
+"order_time"
+],
+"tồn kho (đơn vị cơ bản)": [
+true,
+"stock_qty"
+],
+"mã phiếu nhập": [
+true,
+"purchase_id"
+],
+"ngày nhập": [
+true,
+"purchase_date"
+],
+"ghi chú": [
+true,
+"note"
+],
+"tiền nhập của cả dòng": [
+true,
+"line_amount"
+],
+"nhà cung cấp": [
+true,
+"supplier_name"
+],
+"giá nhập một đơn vị (theo đơn vị nhập của dòng)": [
+true,
+"unit_price"
+],
+"đơn vị nhập": [
+true,
+"unit"
+],
+"số lượng nhập": [
+true,
+"qty"
+],
+"ngày bắt đầu áp dụng giá": [
+true,
+"price_from"
+],
+"giá bán áp dụng từ ngày đó (đơn vị cơ bản)": [
+true,
+"new_price"
+],
+"giá trước lần đổi (trống ở dòng đầu mỗi mặt hàng)": [
+true,
+"old_price"
+],
+"tồn cuối ngày cuối có dữ liệu, theo đơn vị cơ bản": [
+true,
+"stock_qty"
+],
+"giá nhập một đơn vị, theo đơn vị nhập của dòng": [
+true,
+"unit_price"
+],
+"số tiền trả lần đó": [
+true,
+"payment_amount"
+],
+"số khách phải trả cho cả đơn": [
+true,
+"order_total"
+],
+"giá vốn một đơn vị bán": [
+true,
+"unit_cost"
+],
+"tổng tiền của cả phiếu nhập": [
+true,
+"purchase_total"
+],
+"mã khách (trống nếu khách lẻ)": [
+true,
+"customer_id"
+],
+"tổng tiền hàng của đơn (cộng thành tiền các dòng), trước giảm giá của đơn": [
+true,
+"order_subtotal"
+],
+"giảm giá": [
+true,
+"discount"
+],
+"đã thanh toán": [
+true,
+"paid"
+],
+"thời điểm đặt đơn (ngày giờ)": [
+true,
+"order_time"
+],
+"tổng tiền đơn": [
+true,
+"order_total"
+],
+"còn nợ": [
+true,
+"debt"
+],
+"kênh bán": [
+true,
+"channel"
+],
+"mã nhân viên bán": [
+true,
+"staff_id"
+],
+"cột trống, không có dữ liệu": [
+true,
+null
+],
+"mã hàng": [
+true,
+"product_id"
+],
+"số thứ tự dòng trong đơn": [
+true,
+"line_no"
+],
+"tên": [
+true,
+"name"
+],
+"nhóm hàng": [
+true,
+"category"
+],
+"giá bán hiện tại": [
+true,
+"price"
+],
+"mã khách": [
+true,
+"customer_id"
+],
+"số điện thoại": [
+true,
+"phone"
+],
+"nhóm khách": [
+true,
+"customer_group"
+],
+"địa chỉ": [
+true,
+"address"
+],
+"ngày tạo khách trên phần mềm": [
+true,
+"created_date"
+],
+"mã nhà cung cấp": [
+true,
+"supplier_id"
+],
+"tổng tiền phiếu nhập": [
+true,
+"purchase_total"
+],
+"trạng thái phiếu nhập": [
+true,
+"purchase_status"
+],
+"số thứ tự dòng trong phiếu nhập": [
+true,
+"line_no"
+],
+"số khách còn nợ của đơn, tính đến hết ngày cuối dữ liệu": [
+true,
+"debt"
+],
+"tiền hàng của đơn: cộng thành tiền các mặt hàng, trước giảm giá của đơn, chưa gồm phí giao": [
+true,
+"order_subtotal"
+],
+"số khách phải trả cho cả đơn (đã tính giảm giá của đơn và phí giao)": [
+true,
+"order_total"
+],
+"số khách còn nợ của đơn (đơn huỷ: 0)": [
+true,
+"debt"
+],
+"hình thức thanh toán của đơn: cash tiền mặt, transfer chuyển khoản, ewallet ví điện tử, cod giao hàng thu tiền, debt ghi nợ": [
+true,
+"payment_method"
+],
+"thời điểm thu": [
+true,
+"payment_date"
+],
+"hình thức thanh toán": [
+true,
+"payment_method"
+],
+"số tiền": [
+true,
+"payment_amount"
+],
+"mã phiếu thu": [
+true,
+"payment_id"
+],
+"giá vốn": [
+true,
+"unit_cost"
+],
+"ngày giao": [
+true,
+"delivery_date"
+],
+"đợt giao (1, 2, 3)": [
+true,
+"delivery_round"
+],
+"biển số xe": [
+true,
+"plate"
+],
+"tài xế": [
+true,
+"driver"
+],
+"số ngày được nợ": [
+true,
+"credit_days"
+],
+"hạn thanh toán": [
+true,
+"due_date"
+],
+"ngày khách phải trả hết đơn": [
+false,
+null
+],
+"số ngày được nợ, tính từ ngày đặt": [
+true,
+"credit_days"
+],
+"số lô": [
+true,
+"batch_id"
+],
+"hạn sử dụng": [
+true,
+"expiry_date"
+],
+"số lượng nhập (đơn vị cơ bản)": [
+true,
+"qty_base"
+],
+"số lượng bán lấy từ lô (đơn vị cơ bản)": [
+true,
+"qty_base"
+],
+"số lượng khách trả lại (đơn vị cơ bản); lớn hơn 0: đơn đó có trả hàng": [
+true,
+"qty_returned_base"
+],
+"hoạt chất (trống với thực phẩm chức năng, vật tư)": [
+true,
+"active_ingredient"
+],
+"thuốc kê đơn": [
+true,
+"is_prescription"
+],
+"ngày tạo mặt hàng trên phần mềm": [
+true,
+"created_date"
+],
+"thành tiền của dòng (đã trừ giảm giá dòng)": [
+true,
+"line_amount"
+],
+"mã ca bán hàng": [
+true,
+"shift_id"
+],
+"mã khuyến mãi áp cho đơn (trống: không áp)": [
+true,
+"promo_id"
+],
+"loại và số của chứng từ gốc của dòng thẻ kho (đơn bán, phiếu nhập hoặc phiếu khách trả)": [
+false,
+null
+],
+"tồn sau lần nhập/bán/trả đó, theo đơn vị cơ bản": [
+true,
+"stock_after"
+],
+"số tiền của đơn chưa thu, tính đến hết ngày cuối dữ liệu": [
+false,
+null
+],
+"bàn": [
+true,
+"table_no"
+],
+"khu vực của bàn": [
+true,
+"area"
+],
+"số khách của đơn": [
+true,
+"guests"
+]
+}
