@@ -54,6 +54,7 @@ POLICIES = ("ca_hai", "dinh_tuyen", "json", "sql", "bi_thi_sql", "bi_thi_json", 
 # nhóm luật mới: R2, R). ca_hai +0.837 (quen +0.932, mới +0.742), dinh_tuyen 0.6 +0.830, dinh_tuyen 0.4 +0.798,
 # chỉ SQL +0.791, chỉ JSON +0.693. Ngưỡng 0.5 và 0.6 hoà trên cả bốn bộ -> lấy 0.6 (nghiêng về SQL: đề thật nhiều câu lạ).
 FAMILIAR = 0.6
+_NO_DATA = UNANSWERABLE | {"llm_khong_co"}
 
 
 def _settled(r: dict) -> bool:
@@ -107,12 +108,20 @@ def both(j: dict, s: dict, familiar: bool, cautious: bool = False) -> dict:
     cautious = shop có README không mô tả cột nào: hai đường lệch ở đó phần lớn là cả hai đoán sai cột (hard thiết kế: lấy
     SQL 4 đúng / 19 sai), còn ở shop train lấy SQL lợi hơn (R2-R5: 53 / 30). PP3b trong nhat_ky_thu_nghiem.md."""
     sql = {**s, "tang": "sql"}
+    if j["loai"] == s["loai"] == "llm_khong_co":
+        # hai đường cùng nói shop không ghi loại thông tin câu hỏi cần (giới tính, lý do huỷ, mức hài lòng...): §7 không trả
+        # lời được. Thiết kế: hard 5 / 6, gen_hl 16 / 20, train 1 / 1 câu như vậy có đáp án "không trả lời được"
+        return {"loai": "khong_ghi", "notes": (j.get("notes") or []) + (s.get("notes") or [])}
     if j["loai"] == "tra_loi" and s["loai"] == "tra_loi":
         if same_value(j["value"], s["value"]):
             return j
         if cautious:
             return {"loai": "khong_chac", "notes": (j.get("notes") or []) + (s.get("notes") or [])}
         return j if familiar else sql
+    # một đường trả lời, đường kia nói shop không có dữ liệu đó: hai đường hiểu câu khác nhau, bỏ trống. Thiết kế (hard 201-205,
+    # gen_hl, train) chọn phương án này trên các phương án đặt trước; R2-R5 + F: câu như vậy đúng 8 / sai 8 (T2, nhat_ky)
+    if j["loai"] == "tra_loi" and s["loai"] in _NO_DATA or s["loai"] == "tra_loi" and j["loai"] in _NO_DATA:
+        return {"loai": "khong_chac", "notes": (j.get("notes") or []) + (s.get("notes") or [])}
     if j["loai"] == "tra_loi":
         return j
     if s["loai"] == "tra_loi":

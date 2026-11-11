@@ -91,6 +91,66 @@ def _strip_ref(r: str) -> str:
     return r.strip("*`").strip()
 
 
+_FILE_EXTS = {".csv", ".xlsx", ".xls", ".sqlite", ".db", ".json", ".txt"}
+_FMT_WORDS = {"csv", "xlsx", "xls", "sqlite"}
+_INLINE_PAT = re.compile(r"(\*\*([^*]+)\*\*|`([^`]+)`)\s*\(")
+
+
+def _extract_inline_columns(line: str) -> list[tuple[str | None, str | None, str, str]]:
+    """Rút mô tả cột inline dạng **Tên** (...) hoặc `tên` (...) trong dòng mô tả file/bảng."""
+    s = line.strip()
+    if not s.startswith("- "):
+        return []
+    m_owner = re.search(r"`([^`]+)`", s)
+    if not m_owner:
+        return []
+    owner_raw = m_owner.group(1).strip()
+    _, ext = os.path.splitext(owner_raw.lower())
+    if ext in _FILE_EXTS:
+        file_name, table_name = owner_raw, None
+    else:
+        file_name, table_name = None, owner_raw
+
+    colon_idx = s.find(":", m_owner.end())
+    if colon_idx == -1:
+        return []
+    rest = s[colon_idx + 1:]
+
+    res = []
+    pos = 0
+    while pos < len(rest):
+        m = _INLINE_PAT.search(rest, pos)
+        if not m:
+            break
+        name = (m.group(2) if m.group(2) is not None else m.group(3)).strip()
+        open_idx = m.end() - 1
+        count = 0
+        close_idx = -1
+        for i in range(open_idx, len(rest)):
+            if rest[i] == "(":
+                count += 1
+            elif rest[i] == ")":
+                count -= 1
+                if count == 0:
+                    close_idx = i
+                    break
+        if close_idx == -1:
+            pos = m.end()
+            continue
+        desc = rest[open_idx + 1:close_idx].strip()
+        pos = close_idx + 1
+
+        _, name_ext = os.path.splitext(name.lower())
+        if name_ext in _FILE_EXTS:
+            continue
+        if name.lower() == owner_raw.lower():
+            continue
+        if desc.lower() in _FMT_WORDS:
+            continue
+        res.append((file_name, table_name, name, desc))
+    return res
+
+
 def parse_readme(path: str) -> ReadmeInfo:
     shop = os.path.basename(os.path.dirname(path))
     info = ReadmeInfo(shop=shop)
@@ -98,6 +158,16 @@ def parse_readme(path: str) -> ReadmeInfo:
         return info
     with open(path, encoding="utf-8-sig") as f:
         lines = [l.rstrip("\n") for l in f]
+
+    def add_inline(line_str: str):
+        if not os.environ.get("DATAMATE_INLINE"):   # NV1 tắt mặc định: làm tụt hard đo thật (FX3 / FX3c)
+            return
+        existing = {(d.file, d.table, d.column) for d in info.columns}
+        for f_name, t_name, c_name, c_desc in _extract_inline_columns(line_str):
+            key = (f_name, t_name, c_name)
+            if key not in existing:
+                info.columns.append(ColumnDoc(f_name, None, c_name, c_desc, "inline", t_name))
+                existing.add(key)
 
     section, cur_file, cur_sheet, intro = None, None, None, []
     last_topic = None
@@ -121,12 +191,16 @@ def parse_readme(path: str) -> ReadmeInfo:
         elif section == "files":
             if m := _FILE_ITEM.match(s):
                 info.files.append(m[1])
+            if s.startswith("- "):
+                add_inline(s)
         elif section == "tables":
             names = re.findall(r"`([^`]+)`", s)
             if names and not info.sqlite_tables:
                 info.sqlite_tables = names        # dòng đầu: danh sách bảng
             elif s:
                 intro.append(s)                   # câu mô tả quan hệ bảng
+            if s.startswith("- "):
+                add_inline(s)
         elif section == "cols":
             if m := _BULLET.match(s):
                 info.columns.append(ColumnDoc(cur_file, cur_sheet, m[1].strip(), m[2].strip(), "columns"))

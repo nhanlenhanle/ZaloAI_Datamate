@@ -74,6 +74,12 @@ def _frame(con, name: str, df: pd.DataFrame, types: dict | None = None) -> str:
     return name
 
 
+# khoá tên trong SQL, cùng phép với loader.build.text_key: chữ thường, đ -> d, bỏ dấu, ký tự không phải chữ / số thành khoảng
+# trắng, gộp khoảng trắng
+_NAME_KEY = ("NULLIF(trim(regexp_replace(strip_accents(replace(lower(CAST({x} AS VARCHAR)), 'đ', 'd')), "
+             "'[^a-z0-9_]+', ' ', 'g')), '')")
+
+
 class Facts:
     """Bảng chuẩn của MỘT shop (mỗi connection một Facts)."""
 
@@ -126,6 +132,22 @@ class Facts:
         self._made["dim_khach"] = _frame(self.con, "_f_dim_khach", df)
         return "_f_dim_khach"
 
+    def code_labels(self) -> dict:
+        """Mã chuẩn của kênh / hình thức thanh toán ('tai_quay', 'chuyen_khoan') -> cách ghi trong sổ gặp nhiều nhất
+        ('Tại cửa hàng'): đáp án nộp tên như file ghi (§9), mã chỉ để khớp chữ trong câu hỏi."""
+        if "labels" not in self._made:
+            out = {}
+            s = sales_sql(self.con)
+            if s is not None:
+                for code, raw in (("ch", "chraw"), ("pm", "pmraw")):
+                    for c, r in self.con.execute(
+                            f"SELECT {code}, {raw} FROM (SELECT {code}, {raw}, row_number() OVER (PARTITION BY {code} "
+                            f"ORDER BY COUNT(*) DESC, {raw}) rn FROM ({s}) WHERE {code} IS NOT NULL AND {raw} IS NOT NULL "
+                            f"GROUP BY 1, 2) WHERE rn = 1").fetchall():
+                        out.setdefault(str(c), str(r))
+            self._made["labels"] = out
+        return self._made["labels"]
+
     # -------------------------------------------------------- bảng theo kỳ
     def dong_ban(self) -> str:
         s = sales_sql(self.con)
@@ -139,6 +161,15 @@ class Facts:
                                  f"OR minute(CAST(t AS TIMESTAMP)) <> 0").fetchone()[0]
         hour = "hour(CAST(s.t AS TIMESTAMP))" if timed else "NULL::INTEGER"
         dh, dk = self._dim_hang(), self._dim_khach()
+        # nhân viên chỉ ghi tên ("Lan", "LAN", "lan "): mỗi khoá tên (bỏ dấu, hoa thường, dấu câu như text_key) lấy cách ghi
+        # gặp nhiều nhất làm tên đại diện. Gom nhóm theo tên gốc thì một người thành nhiều người; giữ cách ghi trong sổ (không
+        # phải khoá bỏ dấu) để đáp án vẫn đúng dấu và câu lọc "nhan_vien = 'Lan'" vẫn khớp
+        key = _NAME_KEY.format(x="staff")
+        self.con.execute(f"""
+            CREATE OR REPLACE TEMP TABLE _f_dim_nv AS
+            SELECT k, staff AS rep FROM (
+                SELECT {key} AS k, staff, row_number() OVER (PARTITION BY {key} ORDER BY COUNT(*) DESC, staff) AS rn
+                FROM ({s}) WHERE staff IS NOT NULL GROUP BY 1, 2) WHERE rn = 1 AND k IS NOT NULL""")
         self.con.execute(f"""
             CREATE OR REPLACE TEMP TABLE _f_dong_ban AS
             SELECT COALESCE(CAST(s.order_id AS VARCHAR), 'dong' || row_number() OVER ()) AS don,
@@ -156,7 +187,7 @@ class Facts:
                    CASE WHEN COALESCE(s.walk, FALSE) THEN NULL
                         ELSE COALESCE(CAST(s.cid AS VARCHAR), CAST(s.ckey AS VARCHAR)) END AS khach,
                    s.cname AS ten_khach, COALESCE(s.walk, FALSE) AS khach_le,
-                   s.ch AS kenh, s.pm AS thanh_toan, s.staff AS nhan_vien,
+                   s.ch AS kenh, s.pm AS thanh_toan, COALESCE(nv.rep, s.staff) AS nhan_vien,
                    COALESCE(a.nhom_hang, b.nhom_hang) AS nhom_hang,
                    COALESCE(a.don_vi_co_ban, b.don_vi_co_ban) AS don_vi_co_ban,
                    COALESCE(a.ke_don, b.ke_don) AS ke_don, COALESCE(a.hoat_chat, b.hoat_chat) AS hoat_chat,
@@ -164,7 +195,8 @@ class Facts:
                    {disc} AS giam_dong
             FROM ({s}) s
             LEFT JOIN "{dh}" a ON a.k = CAST(s.pid AS VARCHAR) LEFT JOIN "{dh}" b ON b.k = CAST(s.pkey AS VARCHAR)
-            LEFT JOIN "{dk}" c ON c.k = CAST(s.cid AS VARCHAR) LEFT JOIN "{dk}" e ON e.k = CAST(s.ckey AS VARCHAR)""")
+            LEFT JOIN "{dk}" c ON c.k = CAST(s.cid AS VARCHAR) LEFT JOIN "{dk}" e ON e.k = CAST(s.ckey AS VARCHAR)
+            LEFT JOIN _f_dim_nv nv ON nv.k = {_NAME_KEY.format(x="s.staff")}""")
         return "_f_dong_ban"
 
     def don(self) -> str:

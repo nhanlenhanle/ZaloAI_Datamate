@@ -17,7 +17,8 @@ from collections import Counter
 import duckdb
 
 from datamate.loader import llm
-from datamate.query.compose import (_ASKS_COUNT, _ASKS_DATE, _ASKS_NAMES, _ASKS_RX, _IS_DATE, _MONTH_YEAR, ExampleBank,
+from datamate.query import alias
+from datamate.query.compose import (ASKS_DAY, _ASKS_COUNT, _ASKS_DATE, _ASKS_NAMES, _ASKS_RX, _IS_DATE, _MONTH_YEAR, ExampleBank,
                                     RuleBank, ShopContext, _is_zero, _plan_names, asks_yes_no, column_meaning, holiday_block,
                                     mask, near_rules, period_text, readme_block, rule_rows, value_key)
 from datamate.query.evaluate import HOLDOUT
@@ -346,6 +347,19 @@ def _execute(con, sql: str) -> list[tuple]:
         timer.cancel()
 
 
+def _execute_alias(con, sql: str) -> tuple[list[tuple], str]:
+    """Chạy SQL; lỗi 'không có cột X' mà X là tên cột gốc (README) của đúng một cột -> đổi sang tên trong DB, chạy lại."""
+    for _ in range(4):
+        try:
+            return _execute(con, sql), sql
+        except duckdb.BinderException as e:
+            new = alias.fix_sql(con, sql, str(e))
+            if not new:
+                raise
+            sql = new
+    return _execute(con, sql), sql
+
+
 def _cell(v):
     if isinstance(v, (dt.datetime, dt.date)):
         return v.strftime("%Y-%m-%d")
@@ -415,11 +429,21 @@ def _named(ctx: ShopContext, s: str) -> dict:
     return {"names": [n for n in dict.fromkeys(names) if n and n != s] + [s], "id": s}
 
 
+def _code_label(ctx: ShopContext, v: str) -> str | None:
+    """Mã chuẩn kênh / thanh toán SQL trả ra ('tai_quay') -> nhãn trong sổ ('Tại cửa hàng'); không phải mã thì None."""
+    try:
+        return ctx.facts.code_labels().get(v)
+    except (NoSource, duckdb.Error):
+        return None
+
+
 def _with_names(ctx: ShopContext, v):
     if isinstance(v, dict) and "names" in v:
         return _named(ctx, v["id"])
+    if isinstance(v, str) and (lab := _code_label(ctx, v)):
+        return {"names": [lab, v], "id": v}
     if isinstance(v, dict) and "bang" in v:
-        return {"bang": [[_with_names(ctx, a), b] for a, b in v["bang"]]}
+        return {"bang": [[_with_names(ctx, r[0]), *r[1:]] for r in v["bang"]]}
     if isinstance(v, list):
         return [_with_names(ctx, x) for x in v]
     return v
@@ -429,10 +453,18 @@ def _strip_strings(sql: str) -> str:
     return re.sub(r"'(?:[^']|'')*'", "''", sql)
 
 
+_DATE_CMP = re.compile(r"""(?<![\w."])((?:"[^"]+"|[A-Za-z_]\w*)(?:\.(?:"[^"]+"|[A-Za-z_]\w*))?)\s*(<=|=|(?i:between))"""
+                       r"""(\s*(?i:date)\s*'\d{4}-\d{2}-\d{2}')""")
+_SQL_WORDS = {"and", "or", "not", "where", "when", "then", "else", "on", "select", "date", "case", "is", "in"}
+
+
 def _dialect(sql: str) -> str:
-    """Cú pháp SQL nơi khác mà DuckDB không nhận: MINUS (Oracle) -> EXCEPT. Không đụng chữ trong chuỗi."""
+    """Cú pháp SQL nơi khác mà DuckDB không nhận: MINUS (Oracle) -> EXCEPT. Không đụng chữ trong chuỗi.
+    Cột so với một NGÀY bằng <= / BETWEEN: cột có giờ (2025-09-30 18:00) rơi khỏi ngày cuối kỳ -> so theo ngày."""
     parts = re.split(r"('(?:[^']|'')*')", sql)
-    return "".join(p if k % 2 else re.sub(r"(?i)\bminus\b", "EXCEPT", p) for k, p in enumerate(parts))
+    sql = "".join(p if k % 2 else re.sub(r"(?i)\bminus\b", "EXCEPT", p) for k, p in enumerate(parts))
+    return _DATE_CMP.sub(lambda m: m.group(0) if m.group(1).lower() in _SQL_WORDS
+                         else f"TRY_CAST({m.group(1)} AS DATE) {m.group(2)}{m.group(3)}", sql)
 
 
 def _block_text(sql: str, p: int) -> str:
@@ -537,7 +569,7 @@ _MAX_Q = re.compile(r"\b(nhieu nhat|cao nhat|lon nhat|dat nhat|chay nhat|top|man
 _MIN_Q = re.compile(r"\b(it nhat(?!\s+\d)|thap nhat|nho nhat|re nhat|e nhat|kem nhat)\b")
 
 
-_ASKS_DAY = re.compile(r"\b(?:ngay|hom) nao\b|\bngay may\b|\bkhi nao\b|\bbao gio\b")
+_ASKS_DAY = ASKS_DAY
 _ASKS_HOW_MUCH = re.compile(r"\b(?:bao nhieu|bao nhiu|bnhiu|bn|may)\b")
 _ASKS_WHO = re.compile(r"\b(?:ai|nao|gi|ten|nhung|liet ke|top|danh sach|cac)\b")
 
@@ -553,7 +585,7 @@ def _sql_mismatch(sql: str, v, question: str, today: dt.date | None = None, rule
         return 'câu hỏi có / không: "ra": "boolean", SQL trả TRUE / FALSE'
     if today and (why := _period_miss(sql, question, today)):
         return why
-    if isinstance(v, str) and _IS_DATE.fullmatch(v) and not _ASKS_DATE.search(f):
+    if isinstance(v, str) and _IS_DATE.fullmatch(v) and not (_ASKS_DATE.search(f) or ASKS_DAY.search(f)):
         return "câu không hỏi ngày nào: trả thẳng con số câu hỏi cần"
     if _ASKS_DAY.search(f) and isinstance(v, (int, float)) and not isinstance(v, bool):
         return "câu hỏi ngày nào: trả về ngày (cột ngay), không phải con số"
@@ -672,7 +704,8 @@ def _attempt(ctx: ShopContext, out: dict, q: dict, today: dt.date) -> tuple:
         _views(ctx, sql, _at_date(q["question"], today))
         if col := _uses_unrecorded(ctx, sql, today):
             raise NoSource(f"shop không ghi {col}")
-        v = _with_names(ctx, to_value(_execute(ctx.con, sql), ra))
+        rows, sql = _execute_alias(ctx.con, sql)
+        v = _with_names(ctx, to_value(rows, ra))
         if why := _missing_code(ctx, sql, q["question"]) or _sql_mismatch(sql, v, q["question"], today, getattr(ctx, "rules", "")):
             return "loi", why, sql, None, ra
         to_record("", v, "percent" if ra == "percent" else None)      # giá trị nộp được (có tên, là số): lỗi thì cho sửa

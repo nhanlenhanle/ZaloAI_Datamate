@@ -183,6 +183,7 @@ ROLE_DESC = {
     "deliveries": "giao hàng theo đợt",
     "debt_terms": "hạn nợ của đơn",
     "debts": "sổ nợ",
+    "returns": "phiếu khách trả hàng (mã đơn, mặt hàng, số lượng trả, ngày trả)",
     "other": "bảng khác (giữ nguyên)",
 }
 
@@ -201,6 +202,9 @@ def table_role(cols: set[str]) -> str:
         return "stock_moves"
     if cols & {"delivery_round", "driver", "plate"}:
         return "deliveries"
+    # phiếu khách trả: số lượng trả / ngày trả theo đơn hoặc mặt hàng, không có giá bán / thành tiền của dòng bán
+    if cols & {"qty_returned", "qty_returned_base", "return_date"} and cols & {"order_id", "product_id", "product_name"}             and not cols & {"qty", "qty_base", "unit_price", "line_amount", "order_total", "purchase_id", "batch_id"}:
+        return "returns"
     if "credit_days" in cols and not item:
         return "debt_terms"
     # mã thanh toán ghi trên sổ đơn (có mã + ngày đơn, không có tiền thanh toán) thì vẫn là sổ đơn
@@ -412,13 +416,22 @@ def reconcile_status(built: list["Built"]) -> dict:
       ghi trả -> đơn trả hàng (§1: trả một phần cũng là đơn trả), trừ đơn đã huỷ.
     Chỉ xét bảng bán (không xét bảng nhập: trả hàng cho nhà cung cấp là chuyện khác).
     """
-    sales = [b for b in built if b.role in ("sales_lines", "orders", "order_info", "sales_batches", "other")
+    sales = [b for b in built if b.role in ("sales_lines", "orders", "order_info", "sales_batches", "returns", "other")
              and "order_id" in b.df.columns]
+    # đơn đã có cột trạng thái thật (rulebook: chỉ sổ KHÔNG có cột trạng thái mới đọc trạng thái ở ghi chú):
+    # trạng thái đọc từ ghi chú của bảng khác không được đè lên
+    by_col = set()
+    for b in sales:
+        if b.stats.get("status_source") == "status" and "status_norm" in b.df.columns:
+            by_col |= set(b.df.loc[b.df["status_norm"].notna(), "order_id"].astype(str))
     rank = {}
     for b in sales:
         if "status_norm" in b.df.columns:
             r = b.df["status_norm"].map(_STATUS_RANK).groupby(b.df["order_id"].astype(str)).min().dropna()
+            note = b.stats.get("status_source") == "order_note"
             for k, v in r.items():
+                if note and k in by_col:
+                    continue
                 rank[k] = min(rank.get(k, 9), v)
     returned: dict[str, str] = {}
     for b in sales:
@@ -689,7 +702,8 @@ def collect_aliases(built: list[Built], ab: dict | None) -> pd.DataFrame:
         for c in b.columns:
             col = c["column"]
             # chỉ cột gốc chưa có tên chuẩn (cột build tự thêm có mô tả chứa "ghi tắt" nhưng không phải tên gọi)
-            if c.get("map_source") == "derived" or c.get("canonical"):
+            # "name" (tên chung chưa xếp) cạnh product_name mà tên gốc là "tên gọi khác" vẫn là cột tên gọi khác
+            if c.get("map_source") == "derived" or (c.get("canonical") and c.get("canonical") != "name"):
                 continue
             if col in b.df.columns and c.get("kind") == "text" and col != "product_name" and (
                     _ALIAS_COL.search(fold(c.get("original") or col)) or
@@ -814,10 +828,35 @@ def _conv_rows_from_text(v, base=None) -> list[tuple[str, float, str]]:
     return out
 
 
+def _unit_like_col(b: "Built", skip: str, seen_units: set) -> pd.Series:
+    """Bảng chưa có cột base_unit: cột chữ khác mà >= 80% giá trị là đơn vị đã thấy ở sổ (vd "ĐV cơ bản" chưa ánh xạ)."""
+    df = b.df
+    empty = pd.Series([None] * len(df), index=df.index)
+    if not seen_units:
+        return empty
+    best, best_r = None, 0.0
+    for c in df.columns:
+        if c == skip or c.startswith("_") or c.endswith("__raw") or df[c].dtype != object:
+            continue
+        v = df[c].dropna()
+        if len(v) < 3:
+            continue
+        r = v.map(text_key).isin(seen_units).mean()
+        if r >= 0.8 and r > best_r:
+            best, best_r = c, r
+    return df[best] if best is not None else empty
+
+
 def collect_conversions(built: list[Built], readme) -> pd.DataFrame:
     """Mọi dòng quy đổi của shop: bảng quy đổi, cột chữ '1 thùng = 4 bịch' trong danh mục, README.
     Kết quả mỗi dòng: (product_id, product_name, product_key, unit, factor, base_unit, source)."""
     rows = []
+    # đơn vị đã thấy ở các cột đơn vị (để nhận cột "đơn vị cơ bản" chưa ánh xạ theo giá trị)
+    seen_units = set()
+    for b in built:
+        for uc in ("unit", "base_unit", "big_unit"):
+            if uc in b.df.columns:
+                seen_units |= {text_key(v) for v in b.df[uc].dropna().unique()} - {None}
     for b in built:
         df, cols = b.df, set(b.df.columns)
         pid = df["product_id"] if "product_id" in cols else pd.Series([None] * len(df))
@@ -833,7 +872,7 @@ def collect_conversions(built: list[Built], readme) -> pd.DataFrame:
             col = c["column"]
             if c["kind"] != "text" or col not in cols:
                 continue
-            base = df["base_unit"] if "base_unit" in cols else pd.Series([None] * len(df), index=df.index)
+            base = df["base_unit"] if "base_unit" in cols else _unit_like_col(b, col, seen_units)
             vals = df[col].dropna()
             if len(vals) < 3 or sum(bool(_conv_rows_from_text(v, base[i])) for i, v in vals.items()) < 0.9 * len(vals):
                 continue
@@ -1083,10 +1122,18 @@ def build_shop(shop: str, items: list[Built], readme, dropped_step1: list[dict],
     conventions: quy ước README đã đọc (loader/conventions.py). Ghi db_path, trả thống kê."""
     shared = shared or {}
     conventions = conventions or {}
+    rb = shared.get("rulebook")
+    labels.set_rules(list(rb["text"]) if rb is not None and len(rb) else [])
     built, warnings = merge_split(items)
     used: set[str] = set()
     for b in built:
         b.role = table_role(set(b.df.columns))
+        if b.role == "customers" and os.environ.get("DATAMATE_KHACH_KHONG_LAP"):   # tắt mặc định (FX3f)
+            # danh sách khách: mỗi khách một dòng. Mã / tên khách lặp nhiều (sổ phiên, sổ nạp tiền...) là sổ sự việc
+            key = next((c for c in ("customer_id", "customer_name") if c in b.df.columns), None)
+            v = b.df[key].dropna() if key else None
+            if v is not None and len(v) >= 20 and v.nunique() < 0.8 * len(v):
+                b.role = "other"
         b.name = sql_name(b.label, used)
     conventions = drop_contradicted(conventions, {c for b in built for c in b.df.columns})
     conv_stats = apply_money_scale(built, conventions.get("money_scale"))

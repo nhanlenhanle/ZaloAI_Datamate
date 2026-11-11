@@ -36,3 +36,18 @@ def test_nhom_trong_danh_muc_hang_la_nhom_hang():
     maps = [m("Mã KH", "customer_id"), m("Tên khách", "customer_name"), m("Nhóm", "customer_group")]
     _resolve_context(maps)
     assert maps[2].canonical == "customer_group"
+
+
+def test_phieu_thu_co_ma_phieu_va_ma_don():
+    from datamate.loader.mapping import ColumnMap, _resolve_context
+    from datamate.loader.build import table_role
+    def m(col, canon):
+        return ColumnMap(table="phieuthu", column=col, canonical=canon, source="name_dict", description=None, note=None)
+    maps = [m("Mã phiếu", "order_id"), m("Mã đơn", "order_id"), m("Ngày giờ thu", "payment_date"), m("Số tiền", "money")]
+    _resolve_context(maps)
+    assert [x.canonical for x in maps] == ["payment_id", "order_id", "payment_date", "payment_amount"]
+    assert table_role({x.canonical for x in maps}) == "payments"
+    # phiếu dịch vụ (train): "Mã phiếu" là mã đơn khi bảng không có cột "Mã đơn" riêng
+    maps = [m("Mã phiếu", "order_id"), m("Ngày sửa", "order_date"), m("Thành tiền", "line_amount")]
+    _resolve_context(maps)
+    assert maps[0].canonical == "order_id"

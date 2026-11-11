@@ -111,9 +111,13 @@ def test_both_trung_thi_nop_khac_thi_theo_do_quen():
 def test_both_mot_duong_tra_loi_thi_lay_duong_do():
     j = {"loai": "tra_loi", "value": 5}
     s = {"loai": "tra_loi", "value": 6}
-    assert both(j, {"loai": "thieu_nguon"}, familiar=False) is j
-    assert both({"loai": "ngoai_ky"}, s, familiar=True)["value"] == 6
+    assert both(j, {"loai": "loi"}, familiar=False) is j
+    assert both({"loai": "khong_dong_thuan"}, s, familiar=True)["value"] == 6
     assert both({"loai": "loi"}, s, familiar=True)["tang"] == "sql"
+    # đường kia nói shop không có dữ liệu: hai đường hiểu câu khác nhau -> bỏ trống (T2)
+    for miss in ("thieu_nguon", "ngoai_ky", "llm_khong_co"):
+        assert both(j, {"loai": miss}, familiar=False)["loai"] == "khong_chac"
+        assert both({"loai": miss}, s, familiar=True)["loai"] == "khong_chac"
 
 
 def test_both_khong_duong_nao_tra_loi():

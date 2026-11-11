@@ -352,7 +352,7 @@ def sales_sql(con) -> str | None:
                 return (f'SELECT order_id, CAST("{d}" AS DATE) AS d, status_norm AS st, order_subtotal AS amt, '
                         f'NULL AS pid, NULL AS pkey, NULL AS pname, NULL AS qb, NULL AS cid, {ck} AS ckey, '
                         f'customer_name AS cname, is_walk_in AS walk, NULL AS qty, NULL AS uc, NULL AS up, '
-                        f'NULL AS ch, NULL AS pm, NULL AS staff, NULL AS t, NULL AS disc '
+                        f'NULL AS ch, NULL AS pm, NULL AS chraw, NULL AS pmraw, NULL AS staff, NULL AS t, NULL AS disc '
                         f'FROM (SELECT DISTINCT ON (order_id) * FROM "{O}")')
         return None
     L = lines[0]
@@ -387,6 +387,7 @@ def sales_sql(con) -> str | None:
             f"{'l.qty' if 'qty' in lc else 'NULL'} AS qty, {'l.unit_cost' if 'unit_cost' in lc else 'NULL'} AS uc, "
             f"{'l.unit_price' if 'unit_price' in lc else 'NULL'} AS up, "
             f"CAST({pick('channel_norm')} AS VARCHAR) AS ch, CAST({pick('payment_norm')} AS VARCHAR) AS pm, "
+            f"CAST({pick('channel')} AS VARCHAR) AS chraw, CAST({pick('payment_method')} AS VARCHAR) AS pmraw, "
             f"CAST(COALESCE({pick('staff_id')}, {pick('staff_name')}) AS VARCHAR) AS staff, "
             f"CAST(COALESCE({pick('order_time')}, {pick('order_date')}) AS TIMESTAMP) AS t, "
             f"{'l.line_discount' if 'line_discount' in lc else 'NULL'} AS disc "
@@ -455,11 +456,61 @@ def _debt_base(con):
     pm: order_id, pd (ngày thu), amt. Nợ lấy theo sổ thu; cột "đã trả" của đơn không dùng."""
     P = next((p for p in _tables(con, "payments")
               if {"order_id", "payment_amount", "payment_date"} <= _cols(con, p)), None)
-    O = next((o for o in _tables(con, "orders")
-              if {"order_id", "order_total", "order_date"} <= _cols(con, o)), None)
+    orders_candidates = [o for o in _tables(con, "orders")
+                         if "order_id" in _cols(con, o) and _cols(con, o) & {"order_date", "order_time"}]
+    # Ưu tiên bảng có order_total (như cũ)
+    O = next((o for o in orders_candidates if "order_total" in _cols(con, o)), None)
+    nv2 = bool(os.environ.get("DATAMATE_NV2"))   # NV2 (công nợ không có tổng đơn) tắt mặc định: FX3f gen_do −1 câu
+    if O is None and orders_candidates and nv2:
+        O = orders_candidates[0]
     if not (P and O):
         return None
     oc = _cols(con, O)
+
+    # Ngày đặt d: CAST(MIN(COALESCE(order_date, order_time)) AS DATE)
+    if {"order_date", "order_time"} <= oc:
+        date_expr = 'COALESCE(order_date, order_time)'
+    elif "order_date" in oc:
+        date_expr = 'order_date'
+    else:
+        date_expr = 'order_time'
+    d_col = f'CAST(MIN({date_expr}) AS DATE)'
+
+    # Tổng phải trả tot
+    if "order_total" in oc:
+        tot_expr = "ANY_VALUE(order_total)"
+        from_orders = f'"{O}"'
+    else:
+        # Bảng dòng bán đầu tiên có order_id và line_amount
+        L = next((l for l in _tables(con, "sales_lines")
+                  if {"order_id", "line_amount"} <= _cols(con, l)), None)
+        if L is None:
+            return None
+        lc = _cols(con, L)
+        # cùng điều kiện như sales_sql: dòng voucher / giảm giá / phí giao / thuế không phải tiền hàng
+        cond_line = ("line_type NOT IN ('voucher', 'giam_gia', 'dung_diem', 'phi_giao', 'thue')"
+                     if "line_type" in lc else "TRUE")
+        # cộng tiền dòng theo đơn TRƯỚC khi nối: nối thẳng thì đơn ghi hai dòng ở bảng đơn bị cộng tiền hai lần
+        ldisc = "ANY_VALUE(order_discount)" if "order_discount" in lc else "NULL"
+        lship = "ANY_VALUE(shipping_fee)" if "shipping_fee" in lc else "NULL"
+        lt = (f'(SELECT order_id, SUM(CASE WHEN {cond_line} THEN line_amount ELSE 0 END) amt, '
+              f'{ldisc} ldisc, {lship} lship FROM "{L}" GROUP BY order_id)')
+        disc_expr = ("COALESCE(ANY_VALUE(order_discount), 0)" if "order_discount" in oc
+                     else "COALESCE(ANY_VALUE(ldisc), 0)" if "order_discount" in lc else "0")
+        ship_expr = ("COALESCE(ANY_VALUE(shipping_fee), 0)" if "shipping_fee" in oc
+                     else "COALESCE(ANY_VALUE(lship), 0)" if "shipping_fee" in lc else "0")
+        tot_expr = f"COALESCE(ANY_VALUE(amt), 0) - {disc_expr} + {ship_expr}"
+        from_orders = f'"{O}" LEFT JOIN {lt} USING (order_id)'
+
+    # Theo rulebook của bộ đề: "Đơn tính vào nợ | đơn ghi nợ"
+    has_ghi_no_rule = False
+    all_tables = {r[0] for r in con.execute("SHOW TABLES").fetchall()}
+    if "_rulebook" in all_tables:
+        texts = [r[0] for r in con.execute("SELECT text FROM _rulebook").fetchall() if r[0]]
+        combined = fold("\n".join(texts))
+        if nv2 and re.search(r"don tinh vao no[^|]*\|[^|]*don \**ghi no", combined):
+            has_ghi_no_rule = True
+
     # đơn COD / bán qua sàn không tính nợ (§4): dùng mã chung lớp data đã chuẩn hoá (nhãn lạ "Thu hộ", "Ship thu
     # tiền" đã quy về 'cod'); không có mã chung thì dò chữ gốc
     conds = [f"regexp_matches(strip_accents(lower(COALESCE(CAST(\"{c}\" AS VARCHAR), ''))), '{rx}')"
@@ -469,14 +520,29 @@ def _debt_base(con):
     if "channel_norm" in oc:
         conds.append("COALESCE(channel_norm IN ('shopee', 'lazada', 'tiktok'), FALSE)")
     ex = " OR ".join(conds) or "FALSE"
+
+    extra_filter = ""
+    if has_ghi_no_rule and "payment_norm" in oc:
+        extra_filter = " AND payment_norm = 'ghi_no'"
+
     cid = "CAST(customer_id AS VARCHAR)" if "customer_id" in oc else "customer_key" if "customer_key" in oc else "NULL"
     cname = "customer_name" if "customer_name" in oc else "NULL"
     walk = "is_walk_in" if "is_walk_in" in oc else "FALSE"
     st = "status_norm" if "status_norm" in oc else "NULL"
-    od = (f'od AS (SELECT * FROM (SELECT order_id, ANY_VALUE(order_total) tot, CAST(MIN(order_date) AS DATE) d, '
+
+    order_id_col = "order_id"         # nối USING (order_id): bảng tiền dòng chỉ có order_id, amt, ldisc, lship
+
+    # extra_filter áp dụng ở outer WHERE (sau subquery), nơi các cột đã được alias:
+    # Ở subquery: ANY_VALUE(payment_norm) nếu có rule ghi nợ
+    pay_norm_select = ""
+    if has_ghi_no_rule and "payment_norm" in oc:
+        pay_norm_select = ", ANY_VALUE(payment_norm) AS payment_norm"
+        extra_filter = " AND payment_norm = 'ghi_no'"
+
+    od = (f'od AS (SELECT * FROM (SELECT {order_id_col} AS order_id, {tot_expr} AS tot, {d_col} AS d, '
           f'MIN({st}) st, BOOL_OR({ex}) ex, ANY_VALUE({cid}) cid, ANY_VALUE({cname}) cname, '
-          f'COALESCE(BOOL_OR({walk}), FALSE) walk FROM "{O}" GROUP BY order_id) '
-          f"WHERE COALESCE(st, '') <> 'huy' AND NOT COALESCE(ex, FALSE))")
+          f'COALESCE(BOOL_OR({walk}), FALSE) walk{pay_norm_select} FROM {from_orders} GROUP BY {order_id_col}) '
+          f"WHERE COALESCE(st, '') <> 'huy' AND NOT COALESCE(ex, FALSE){extra_filter})")
     pm = f'pm AS (SELECT order_id, CAST(payment_date AS DATE) pd, payment_amount amt FROM "{P}")'
     return od, pm
 
@@ -565,7 +631,70 @@ def stock_at(con, pid, pkey, x: dt.date):
                         f'FROM "{SB}" s JOIN b USING (batch_id)', [v]).fetchone()[0]
         if r is not None:
             return r, f"lô {B} - {SB}"
+    # tồn theo dòng nhập / bán / trả: tắt mặc định (S2t: hard đo thật +0.302 -> +0.290), bật DATAMATE_TON_DONG=1
+    r = _flow_stock(con, pid, pkey, x) if os.environ.get("DATAMATE_TON_DONG") else None
+    if r is not None:
+        return r, "nhập - xuất + khách trả"
     return None, "không có nguồn tồn"
+
+
+def _flow_stock(con, pid, pkey, x: dt.date):
+    """Không có bảng tồn / thẻ kho / lô: tồn = nhập (bỏ phiếu huỷ) − xuất theo đơn không huỷ + khách trả (theo ngày trả),
+    đơn vị cơ bản, từ đầu dữ liệu đến hết ngày x. Cần cả dòng nhập lẫn dòng bán có qty_base."""
+    def key(c):
+        if pid is not None and "product_id" in c:
+            return "CAST(product_id AS VARCHAR) = ?", pid
+        if "product_key" in c:
+            return "product_key = ?", pkey
+        return None, None
+    PL = next((p for p in _tables(con, "purchase_lines") if {"qty_base"} <= _cols(con, p)), None)
+    SL = next((s for s in _tables(con, "sales_lines") if {"qty_base"} <= _cols(con, s)), None)
+    if not (PL and SL):
+        return None
+    pc, sc = _cols(con, PL), _cols(con, SL)
+    wp, vp = key(pc)
+    ws, vs = key(sc)
+    if wp is None or ws is None:
+        return None
+    # nhập: ngày trên dòng, hoặc ngày của phiếu
+    if "purchase_date" in pc:
+        pdate, pjoin = "CAST(purchase_date AS DATE)", ""
+    else:
+        P = next((p for p in _tables(con, "purchases") if {"purchase_id", "purchase_date"} <= _cols(con, p)), None)
+        if not (P and "purchase_id" in pc):
+            return None
+        pdate = "CAST(pp.d AS DATE)"
+        pjoin = f'LEFT JOIN (SELECT purchase_id, MIN(purchase_date) d FROM "{P}" GROUP BY 1) pp USING (purchase_id)'
+    pcanc = "AND NOT COALESCE(purchase_cancelled, FALSE)" if "purchase_cancelled" in pc else ""
+    got_in = con.execute(f'SELECT SUM(qty_base) FROM "{PL}" {pjoin} WHERE {wp} AND {pdate} <= ? {pcanc}',
+                         [vp, x]).fetchone()[0]
+    # xuất: ngày / trạng thái trên dòng, không có thì của đơn
+    dcol = next((c for c in ("order_date", "order_time") if c in sc), None)
+    if dcol and "status_norm" in sc:
+        sdate, sst, sjoin = f'CAST("{dcol}" AS DATE)', "status_norm", ""
+    else:
+        O = next((o for o in _tables(con, "orders") if "order_id" in _cols(con, o)
+                  and _cols(con, o) & {"order_date", "order_time"}), None)
+        if not (O and "order_id" in sc):
+            return None
+        oc = _cols(con, O)
+        od = next(c for c in ("order_date", "order_time") if c in oc)
+        ost = "ANY_VALUE(status_norm)" if "status_norm" in oc else "NULL"
+        sjoin = f'JOIN (SELECT order_id, MIN("{od}") d, {ost} st FROM "{O}" GROUP BY 1) oo USING (order_id)'
+        sdate, sst = "CAST(oo.d AS DATE)", "oo.st"
+    got_out = con.execute(f'SELECT SUM(qty_base) FROM "{SL}" {sjoin} WHERE {ws} AND {sdate} <= ? '
+                          f"AND COALESCE({sst}, '') <> 'huy'", [vs, x]).fetchone()[0]
+    back = 0
+    for R in _tables(con, "returns"):
+        rc = _cols(con, R)
+        wr, vr = key(rc)
+        q = "qty_returned_base" if "qty_returned_base" in rc else None
+        if wr and q and "return_date" in rc:
+            back += con.execute(f'SELECT COALESCE(SUM({q}), 0) FROM "{R}" WHERE {wr} AND CAST(return_date AS DATE) <= ?',
+                                [vr, x]).fetchone()[0] or 0
+    if got_in is None and got_out is None:
+        return None
+    return (got_in or 0) - (got_out or 0) + back
 
 
 def lots_sql(con) -> str | None:

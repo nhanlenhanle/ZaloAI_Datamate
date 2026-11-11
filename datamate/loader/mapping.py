@@ -165,8 +165,18 @@ BUILTIN_NAMES = {
     # tên chung: là tên hàng / khách / NCC / nhân viên tuỳ mã của bảng (_resolve_context)
     "ten": "name", "ten goi": "name", "ho ten": "name", "ho va ten": "name",
     "gia von": "unit_cost", "gia von hang": "unit_cost", "gia von hien tai": "unit_cost",
+    "so tien": "money",          # tiền chung: _resolve_context xếp thành tiền thu / tiền chi / thành tiền theo bảng
     "con kinh doanh": "active",
 }
+# NV4: tên cột phổ thông, tắt mặc định (bật DATAMATE_NV4=1)
+_NV4_NAMES = {
+    "dv co ban": "base_unit", "dvt co ban": "base_unit", "don vi co ban": "base_unit",
+    "tong don": "order_total", "tong phai tra": "order_total",
+    "ma hv": "customer_id", "ma hoi vien": "customer_id",
+    "thanh toan": "payment_method", "hinh thuc thanh toan": "payment_method", "httt": "payment_method", "hinh thuc tt": "payment_method",
+}
+if os.environ.get("DATAMATE_NV4"):   # NV4 tắt mặc định (FX3d: đổi prompt LLM, biz_203 / 201 mất câu)
+    BUILTIN_NAMES.update(_NV4_NAMES)
 
 # chữ chỉ đối tượng trong tên cột "Tên ..." (khách xét trước: "khách hàng" có chữ "hàng")
 _ENTITY_WORDS = [(re.compile(r"\bkhach\b|\bkh\b|customer"), "customer_name"),
@@ -317,6 +327,8 @@ def time_only(vals) -> bool:
 
 
 def _kind_ok(canon: str, kind: str, vals=()) -> bool:
+    if canon == "payment_method" and kind == "number":
+        return False
     if canon == "order_time" and kind == "text":
         return time_only(vals)
     if canon in NUMBER:
@@ -340,6 +352,12 @@ def map_table(table: str, columns: list[str], kinds: dict[str, str], samples: di
         f = fold(col)
         cand: list[tuple[str | None, str, str | None]] = []   # (canonical, source, description)
         d = by_name.get(f)
+        # mô tả trong ngoặc ngay sau tên cột (README kiểu "**Tên** (ghi chú)") chỉ là ghi chú, có thể nhắc
+        # tới cột khác ("= tổng thành tiền dòng − ..."): tên cột đã có trong từ điển thì tin tên trước
+        if d is not None and d.source == "inline" and (
+                (name_key(col) in name_dict and not accent_clash(col, name_key(col), name_dict))
+                or name_key(col) in BUILTIN_NAMES):
+            d = None
         if d is not None:
             ok, canon = desc_to_canonical(d.description)
             if ok:
@@ -549,6 +567,31 @@ def _resolve_context(maps: list[ColumnMap]):
             # trạng thái thanh toán / hoá đơn điện tử / khách: không phải trạng thái đơn.
             # Không dùng "TT" (thanh toán / trạng thái / thành tiền đều viết TT); giá trị là trạng thái đơn thì tin giá trị
             m.canonical, m.note = None, "trạng thái không phải của đơn (theo tên cột)"
+    # phiếu thu ghi cả "Mã phiếu" lẫn "Mã đơn" (có ngày thu): "Mã phiếu" là mã phiếu thu. Từ điển train có "Mã phiếu" = mã đơn
+    # (phiếu dịch vụ tiệm sửa) nên hai cột cùng thành order_id và cột "Mã đơn" thật bị bỏ khi khử trùng
+    orders = [m for m in maps if m.canonical == "order_id"]
+    if len(orders) >= 2 and any(name_key(m.column) == "ma don" for m in orders) \
+            and any(m.canonical == "payment_date" for m in maps):
+        for m in orders:
+            if m.source != "readme_col" and re.fullmatch(r"ma phieu|so phieu", name_key(m.column)):
+                m.canonical, m.note = "payment_id", "mã phiếu thu (bảng có cả mã đơn và ngày thu)"
+
+    # NV3: Bảng phiếu thu không có cột mã phiếu. Tắt mặc định (bật DATAMATE_NV3=1): FX3e biz_205 lật 3 câu
+    if maps and os.environ.get("DATAMATE_NV3") and re.search(r"\bphieu ?thu\b|\bthu ?tien\b|\bpayments?\b|\breceipts?\b", name_key(maps[0].table or "")):
+        canons = {m.canonical for m in maps}
+        if "order_id" in canons \
+                and (canons & {"money", "order_total", "payment_amount"}) \
+                and (canons & {"order_date", "order_time", "payment_date"}) \
+                and not (canons & {"product_id", "product_name", "qty", "qty_base", "unit_price", "line_amount"}):
+            for m in maps:
+                if m.source != "readme_col":
+                    if m.canonical in ("order_date", "order_time"):
+                        m.canonical = "payment_date"
+                        m.note = "phiếu thu (theo tên bảng)"
+                    elif m.canonical in ("money", "order_total"):
+                        m.canonical = "payment_amount"
+                        m.note = "phiếu thu (theo tên bảng)"
+
     # lượt 2: ngữ cảnh bảng. Bảng dòng hàng = có số lượng / đơn giá / thành tiền, hoặc có hàng + đơn / ngày
     present = {m.canonical for m in maps}
     items = present & {"product_id", "product_name", "qty", "qty_base", "unit_price"}
