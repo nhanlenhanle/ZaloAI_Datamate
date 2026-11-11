@@ -521,6 +521,7 @@ def map_shop(tables: list[TableInput], readme, name_dict: dict[str, str], use_re
         _resolve_duplicates(maps)
     if use_llm:
         _llm_pass(tables, results, units)
+        link_line_ids(tables, results)
     return results
 
 
@@ -869,6 +870,45 @@ def _resolve_llm_duplicates(props: list[tuple[ColumnMap, str]], t: TableInput) -
     return out
 
 
+HDR = os.environ.get("DATAMATE_HDR", "1") != "0"
+
+
+def _header_ok(t: TableInput, maps: list[ColumnMap], cand: list[tuple[ColumnMap, str]]) -> bool:
+    """Sổ đầu đơn (mỗi dòng một đơn: mã đơn + ngày đặt, dòng hàng ở bảng khác): mã đơn gần như không lặp."""
+    col = next((m.column for m, c in cand if c == "order_id"), None) or next(
+        (m.column for m in maps if m.canonical == "order_id"), None)
+    # ngày đặt có thể đã do luật tên gán từ trước (nằm trong maps, không trong cand)
+    if not col or not (any(c == "order_date" for _, c in cand) or any(m.canonical == "order_date" for m in maps)):
+        return False
+    vals = [fold(str(v)) for v in t.raw.get(col, []) if v is not None and str(v).strip()]
+    return len(vals) >= 20 and len(set(vals)) >= 0.9 * len(vals)
+
+
+def link_line_ids(tables: list[TableInput], results: dict[str, list[ColumnMap]]) -> None:
+    """HDR: mã phiếu LLM gán purchase_id mà giá trị nằm trong mã đơn của bảng khác (chi tiết của sổ đầu đơn,
+    nối qua mã phiếu) và không nằm trong mã phiếu nhập nào -> order_id."""
+    if not HDR:
+        return
+    raw = {t.name: t.raw for t in tables}
+
+    def vals(name, canon):
+        return {fold(str(v)) for m in results[name] if m.canonical == canon
+                for v in raw[name].get(m.column, []) if v is not None and str(v).strip()}
+    orders = {n: vals(n, "order_id") for n in results}
+    buys = {n: vals(n, "purchase_id") for n in results}
+    for n, maps in results.items():
+        if "order_id" in {m.canonical for m in maps}:
+            continue
+        for m in maps:
+            if m.canonical != "purchase_id" or m.source != "llm":
+                continue
+            mine = buys[n]
+            if len(mine) < 20 or any(len(mine & b) for k, b in buys.items() if k != n):
+                continue
+            if any(k != n and len(mine & o) >= 0.9 * len(mine) for k, o in orders.items()):
+                m.canonical, m.note = "order_id", m.note + " | mã nằm trong mã đơn bảng khác (HDR)"
+
+
 def _llm_pass(tables: list[TableInput], results: dict[str, list[ColumnMap]], units: set[str]):
     """Lượt cuối: cột luật để trống (không có bằng chứng, hoặc README mô tả mà chưa có luật) -> LLM.
     Chỉ nhận tên có trong schema, đúng kiểu và giá trị, chưa có trong bảng, không đưa bảng sang thực thể
@@ -907,7 +947,9 @@ def _llm_pass(tables: list[TableInput], results: dict[str, list[ColumnMap]], uni
                     m.canonical = "unit"
                     used = (used - {"base_unit"}) | {"unit"}
         r0 = table_role(used)
-        _llm_family(props, used, _ROLE_GROUP.get(r0) == "ban")
+        # HDR: bảng có mã đơn nhưng luật đoán là khách / chưa rõ (sổ đầu đơn chưa có ngày) vẫn là bảng nhóm bán
+        hdr_sales = HDR and r0 in ("customers", "other") and "order_id" in used | {c for _, c in props}
+        _llm_family(props, used, _ROLE_GROUP.get(r0) == "ban" or hdr_sales)
         _resolve_qty_pair(props, t)
         props = _resolve_llm_duplicates(props, t)
         cand, seen = [], set(used)
@@ -917,7 +959,8 @@ def _llm_pass(tables: list[TableInput], results: dict[str, list[ColumnMap]], uni
                 seen.add(c)
         # xét vai trò trên CẢ bộ cột đề xuất (bảng bán đổi hết tên cột chỉ đủ dấu hiệu khi gộp lại);
         # không được thì nhận từng cột không làm đổi vai trò bảng
-        whole = _role_change_ok(r0, table_role(seen), seen, t.name)
+        whole = _role_change_ok(r0, table_role(seen), seen, t.name) or (
+            hdr_sales and table_role(seen) == "orders" and _header_ok(t, maps, cand))
         for m, c in cand:
             if whole or _role_change_ok(r0, table_role(used | {c}), used | {c}, t.name):
                 m.canonical, m.source = c, "llm"

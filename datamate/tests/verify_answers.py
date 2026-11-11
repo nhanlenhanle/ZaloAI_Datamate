@@ -377,8 +377,27 @@ def sales_sql(con) -> str | None:
     src = f'"{L}" l' + (f' LEFT JOIN (SELECT DISTINCT ON (order_id) * FROM "{O}") o USING (order_id)' if join else "")
     oid = 'l."order_id"' if "order_id" in lc else "NULL"
     lt = 'l."line_type"' if "line_type" in lc else "'hang'"
+    amt = "l.line_amount"
+    if {"line_discount", "qty", "unit_price"} <= lc:
+        # §1 doanh thu dòng đã trừ giảm giá dòng: sổ ghi thành tiền TRƯỚC giảm (= SL x đơn giá) ở gần hết dòng có giảm
+        # thì tiền thật = thành tiền - giảm dòng; sổ đã ghi sau giảm thì giữ nguyên
+        n, gross, net = con.execute(f"""
+            SELECT COUNT(*),
+                   COUNT(*) FILTER (WHERE abs(a - q * p) <= 1),
+                   COUNT(*) FILTER (WHERE abs(a - (q * p - x)) <= 1)
+            FROM (SELECT TRY_CAST(line_amount AS DOUBLE) a, TRY_CAST(qty AS DOUBLE) q, TRY_CAST(unit_price AS DOUBLE) p,
+                         TRY_CAST(line_discount AS DOUBLE) x FROM "{L}") WHERE x > 0 AND a IS NOT NULL""").fetchone()
+        # giảm của DÒNG thì tỉ lệ giảm / tiền dòng gom vào vài mức (thẻ 3% / 5%); giảm cả bill ghi lặp ở mọi dòng hoặc
+        # ghi vào một dòng (biz_605 "bớt 2% trên tổng bill") thì tỉ lệ trên từng dòng lộn xộn -> không trừ (§1)
+        top = con.execute(f"""
+            SELECT COALESCE(SUM(k), 0) FROM (SELECT COUNT(*) k FROM (
+                SELECT round(TRY_CAST(line_discount AS DOUBLE) / (TRY_CAST(qty AS DOUBLE) * TRY_CAST(unit_price AS DOUBLE)), 3) r
+                FROM "{L}" WHERE TRY_CAST(line_discount AS DOUBLE) > 0 AND TRY_CAST(qty AS DOUBLE) * TRY_CAST(unit_price AS DOUBLE) > 0)
+                GROUP BY r ORDER BY k DESC LIMIT 3)""").fetchone()[0]
+        if n >= 20 and gross >= 0.9 * n and net < 0.1 * n and top >= 0.8 * n:
+            amt = "(l.line_amount - COALESCE(TRY_CAST(l.line_discount AS DOUBLE), 0))"
     return (f"SELECT {oid} AS order_id, CAST(COALESCE({pick('order_date')}, {pick('order_time')}) AS DATE) AS d, "
-            f"{pick('status_norm')} AS st, l.line_amount AS amt, {lt} AS lt, "
+            f"{pick('status_norm')} AS st, {amt} AS amt, {lt} AS lt, "
             f"CAST({pick('product_id')} AS VARCHAR) AS pid, CAST({pick('product_key')} AS VARCHAR) AS pkey, "
             f"{pick('product_full') if 'product_full' in lc else pick('product_name')} AS pname, {pick('qty_base')} AS qb, CAST({pick('customer_id')} AS VARCHAR) AS cid, "
             f"CAST({pick('customer_key')} AS VARCHAR) AS ckey, CAST({pick('customer_name')} AS VARCHAR) AS cname, "

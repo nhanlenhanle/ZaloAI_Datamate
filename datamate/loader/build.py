@@ -90,8 +90,46 @@ def _near_set(a: frozenset, b: frozenset) -> bool:
     return len(a & b) >= 3 and len(a & b) / len(a | b) >= NEAR_COLUMNS
 
 
+def _line_discount_data(dfs: list[pd.DataFrame]) -> bool:
+    """Giảm theo dòng: >= 20 dòng có giảm, tỉ lệ giảm / (qty x unit_price) gom vào <= 3 mức chiếm >= 80%."""
+    parts = [df[["line_discount", "qty", "unit_price"]] for df in dfs
+             if {"line_discount", "qty", "unit_price"} <= set(df.columns)]
+    if not parts:
+        return False
+    x = pd.concat(parts).apply(pd.to_numeric, errors="coerce")
+    x = x[(x["line_discount"] > 0) & (x["qty"] * x["unit_price"] > 0)]
+    if len(x) < 20:
+        return False
+    r = (x["line_discount"] / (x["qty"] * x["unit_price"])).round(3)
+    return r.value_counts().head(3).sum() >= 0.8 * len(x)
+
+
 def _align_parts(g: list[Built]) -> None:
-    """Cột chuẩn chỉ một số phần có và chỉ do LLM đoán: không đủ chắc để gọi là cột chuẩn của cả sổ, trả về tên gốc."""
+    """Cột chuẩn chỉ một số phần có và chỉ do LLM đoán: không đủ chắc để gọi là cột chuẩn của cả sổ, trả về tên gốc.
+    Trước đó: phần khác có cùng tên cột gốc mà chưa map (và chưa có cột chuẩn đó) thì nhận cùng tên chuẩn: cùng một sổ,
+    cùng tên cột là cùng nghĩa (LLM có thể đoán khác nhau giữa các phần, vd GiamThe dòng / đơn ở hai file năm).
+    Nhãn LLM sai được cả hai chiều (biz_605 "Bớt" cả bill bị gán giảm dòng) -> chỉ lan khi dữ liệu xác nhận:
+    hiện chỉ line_discount, khi tỉ lệ giảm / (SL x giá) trên mọi phần gom vào <= 3 mức (giảm theo dòng, vd thẻ 3% / 5%)."""
+    for b in g:
+        for c in b.columns:
+            col, orig = c["column"], c.get("original")
+            if c.get("map_source") != "llm" or not c.get("canonical") or not orig or col not in b.df:
+                continue
+            if c["canonical"] != "line_discount" or not _line_discount_data(
+                    [x.df.rename(columns={orig: col}) for x in g]):
+                continue
+            for x in g:
+                if x is b or col in x.df or orig not in x.df:
+                    continue
+                xc = next((y for y in x.columns if y["column"] == orig), None)
+                if xc is None or xc.get("canonical"):
+                    continue
+                ren = {orig: col}
+                if f"{orig}__raw" in x.df:
+                    ren[f"{orig}__raw"] = f"{col}__raw"
+                x.df = x.df.rename(columns=ren)
+                xc.update(column=col, canonical=c["canonical"], map_source="llm",
+                          note=((xc.get("note") or "") + " | theo phần khác của sổ").strip(" |"))
     for b in g:
         for c in b.columns:
             col, orig = c["column"], c.get("original")
@@ -288,6 +326,35 @@ def fill_order_groups(df: pd.DataFrame, key: str, cols: list[str]) -> dict[str, 
                 df[col] = new
                 filled[col] = n
     return filled
+
+
+DAY_FILL = os.environ.get("DATAMATE_DAY_FILL", "1") != "0"
+
+
+def fill_day_dates(df: pd.DataFrame, dcol: str) -> int:
+    """Sổ tay ghi ngày một lần cho cả ngày, các đơn sau cùng ngày để trống ngày (§8 điền xuống).
+    Sau khi đã điền trong đơn, nếu vẫn còn nhiều dòng trống ngày và các ngày đã ghi đi lên theo thứ tự dòng
+    trong từng file / sheet, thì dòng trống ngày lấy ngày của dòng có ngày gần nhất phía trên (cùng file / sheet)."""
+    if not DAY_FILL or dcol not in df.columns:
+        return 0
+    d = df[dcol]
+    if d.isna().mean() < 0.2 or d.notna().sum() < 10:
+        return 0
+    parts = [df[c].astype(str) for c in ("_src_file", "_src_sheet") if c in df.columns]
+    part = (parts[0] + "|" + parts[1]) if len(parts) == 2 else parts[0] if parts else pd.Series("", index=df.index)
+    nn = d.notna()
+    prev = d[nn].groupby(part[nn]).shift()
+    step = prev.notna()
+    if step.sum() < 5 or (d[nn][step] < prev[step]).mean() > 0.02:
+        return 0
+    n = 0
+    for col in (dcol, f"{dcol}__raw"):
+        if col in df.columns:
+            new = df[col].groupby(part).ffill()
+            if col == dcol:
+                n = int((df[col].isna() & new.notna()).sum())
+            df[col] = new
+    return n
 
 
 # cột cấp dòng: ô trống là trống thật, không lấy theo dòng đầu đơn
@@ -1154,6 +1221,8 @@ def build_shop(shop: str, items: list[Built], readme, dropped_step1: list[dict],
         key = "order_id" if "order_id" in df.columns else "purchase_id" if "purchase_id" in df.columns else None
         if key and b.role not in ("products", "customers", "price_history", "stock", "unit_conversions"):
             st["filled"] = fill_order_groups(df, key, ORDER_LEVEL if key == "order_id" else PURCHASE_LEVEL)
+            if n_day := fill_day_dates(df, "order_date" if key == "order_id" else "purchase_date"):
+                st["day_filled"] = n_day
         if key == "order_id" and b.role in ("sales_lines", "orders", "sales_batches", "order_info"):
             df, dups = drop_dup_lines(df, key)
             st["dup_dropped"] = len(dups)
