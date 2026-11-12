@@ -346,19 +346,34 @@ def sales_sql(con) -> str | None:
         # shop chỉ có bảng đơn (biz_110): doanh thu đơn = tổng tiền hàng trước giảm giá đơn
         for O in orders:
             oc = _cols(con, O)
-            if {"order_subtotal", "status_norm"} <= oc and oc & {"order_date", "order_time"}:
+            # tiền hàng trước giảm đơn; sổ phiếu dịch vụ (sửa xe...) chỉ ghi tổng tiền cả phiếu thì lấy tổng tiền
+            money = "order_subtotal" if "order_subtotal" in oc else "order_total" if "order_total" in oc else None
+            if money and ("status_norm" in oc or money == "order_total") and oc & {"order_date", "order_time"}:
                 d = "order_date" if "order_date" in oc else "order_time"
                 ck = "customer_key" if "customer_key" in oc else "NULL"
-                return (f'SELECT order_id, CAST("{d}" AS DATE) AS d, status_norm AS st, order_subtotal AS amt, '
+                st = "status_norm" if "status_norm" in oc else "NULL"
+                oid = "order_id" if "order_id" in oc else "_src_row"
+                return (f'SELECT {oid} AS order_id, CAST("{d}" AS DATE) AS d, {st} AS st, {money} AS amt, '
                         f'NULL AS pid, NULL AS pkey, NULL AS pname, NULL AS qb, NULL AS cid, {ck} AS ckey, '
-                        f'customer_name AS cname, is_walk_in AS walk, NULL AS qty, NULL AS uc, NULL AS up, '
-                        f'NULL AS ch, NULL AS pm, NULL AS chraw, NULL AS pmraw, NULL AS staff, NULL AS t, NULL AS disc '
-                        f'FROM (SELECT DISTINCT ON (order_id) * FROM "{O}")')
+                        f'{"customer_name" if "customer_name" in oc else "NULL"} AS cname, '
+                        f'{"is_walk_in" if "is_walk_in" in oc else "FALSE"} AS walk, NULL AS qty, NULL AS uc, NULL AS up, '
+                        f'{"channel_norm" if "channel_norm" in oc else "NULL"} AS ch, '
+                        f'{"payment_norm" if "payment_norm" in oc else "NULL"} AS pm, NULL AS chraw, '
+                        f'{"payment_method" if "payment_method" in oc else "NULL"} AS pmraw, '
+                        f'{"COALESCE(CAST(staff_id AS VARCHAR), staff_name)" if "staff_id" in oc and "staff_name" in oc else "staff_name" if "staff_name" in oc else "NULL"} AS staff, '
+                        f'{"order_time" if "order_time" in oc else "NULL"} AS t, NULL AS disc '
+                        + (f'FROM (SELECT DISTINCT ON (order_id) * FROM "{O}")' if "order_id" in oc else f'FROM "{O}"'))
         return None
     L = lines[0]
     lc = _cols(con, L)
+    amt_col = "line_amount"
     if "line_amount" not in lc:
-        return None
+        # sổ mỗi dòng một lượt (phiên sạc xe...): không có tiền dòng, chỉ có tiền cả lượt, mã lượt không lặp
+        if "order_total" not in lc:
+            return None
+        if "order_id" in lc and con.execute(f'SELECT COUNT(*) - COUNT(DISTINCT order_id) FROM "{L}"').fetchone()[0] > 0:
+            return None
+        amt_col = "order_total"
     O = next((o for o in orders if "order_id" in _cols(con, o)), None)
     oc = _cols(con, O) if O else set()
     join = bool(O) and "order_id" in lc and any(c not in lc and c in oc for c in LINE_COLS)
@@ -377,8 +392,8 @@ def sales_sql(con) -> str | None:
     src = f'"{L}" l' + (f' LEFT JOIN (SELECT DISTINCT ON (order_id) * FROM "{O}") o USING (order_id)' if join else "")
     oid = 'l."order_id"' if "order_id" in lc else "NULL"
     lt = 'l."line_type"' if "line_type" in lc else "'hang'"
-    amt = "l.line_amount"
-    if {"line_discount", "qty", "unit_price"} <= lc:
+    amt = f"l.{amt_col}"
+    if amt_col == "line_amount" and {"line_discount", "qty", "unit_price"} <= lc:
         # §1 doanh thu dòng đã trừ giảm giá dòng: sổ ghi thành tiền TRƯỚC giảm (= SL x đơn giá) ở gần hết dòng có giảm
         # thì tiền thật = thành tiền - giảm dòng; sổ đã ghi sau giảm thì giữ nguyên
         n, gross, net = con.execute(f"""
@@ -479,6 +494,23 @@ def _debt_base(con):
                          if "order_id" in _cols(con, o) and _cols(con, o) & {"order_date", "order_time"}]
     # Ưu tiên bảng có order_total (như cũ)
     O = next((o for o in orders_candidates if "order_total" in _cols(con, o)), None)
+    if O is None and not orders_candidates:
+        # hoá đơn và dòng hàng gộp một sheet (thông tin đơn lặp trên mọi dòng): bảng dòng bán có tổng đơn là bảng đơn
+        # (gom theo order_id, ANY_VALUE(order_total) nên dòng lặp không cộng trùng)
+        O = next((t for t in _tables(con, "sales_lines") if {"order_id", "order_total"} <= _cols(con, t)
+                  and _cols(con, t) & {"order_date", "order_time"}), None)
+    upfront = None
+    if O is None and not orders_candidates:
+        # sổ bán dòng hàng không có tổng đơn nhưng có tiền khách đưa lúc mua ("Đưa trước"): tổng đơn = tiền dòng - giảm
+        # + phí giao (như nhánh dưới), tiền đưa trước là khoản thu ngày mua. Có cột "đã trả" mới là sổ có theo dõi nợ.
+        O = next((t for t in _tables(con, "sales_lines") if {"order_id", "line_amount", "paid"} <= _cols(con, t)
+                  and _cols(con, t) & {"order_date", "order_time"}), None)
+        upfront = O
+        if O is None and P:
+            # sổ bán dòng hàng không có tổng đơn, sổ thu ghi mọi lần thu (kể cả lúc mua): tổng đơn = tiền dòng - giảm
+            # đơn (cột ở sổ bán hoặc bảng thông tin đơn riêng) + phí giao
+            O = next((t for t in _tables(con, "sales_lines") if {"order_id", "line_amount"} <= _cols(con, t)
+                      and _cols(con, t) & {"order_date", "order_time"}), None)
     nv2 = bool(os.environ.get("DATAMATE_NV2"))   # NV2 (công nợ không có tổng đơn) tắt mặc định: FX3f gen_do −1 câu
     if O is None and orders_candidates and nv2:
         O = orders_candidates[0]
@@ -512,14 +544,26 @@ def _debt_base(con):
         # cộng tiền dòng theo đơn TRƯỚC khi nối: nối thẳng thì đơn ghi hai dòng ở bảng đơn bị cộng tiền hai lần
         ldisc = "ANY_VALUE(order_discount)" if "order_discount" in lc else "NULL"
         lship = "ANY_VALUE(shipping_fee)" if "shipping_fee" in lc else "NULL"
-        lt = (f'(SELECT order_id, SUM(CASE WHEN {cond_line} THEN line_amount ELSE 0 END) amt, '
+        # dòng âm là dòng khách trả hàng: rulebook §4 "đơn trả hàng vẫn tính nếu còn nợ", "hoàn tiền trả hàng không trừ"
+        # -> tổng đơn để tính nợ là tiền bán, không trừ dòng trả
+        lt = (f'(SELECT order_id, SUM(CASE WHEN {cond_line} AND line_amount > 0 THEN line_amount ELSE 0 END) amt, '
               f'{ldisc} ldisc, {lship} lship FROM "{L}" GROUP BY order_id)')
         disc_expr = ("COALESCE(ANY_VALUE(order_discount), 0)" if "order_discount" in oc
                      else "COALESCE(ANY_VALUE(ldisc), 0)" if "order_discount" in lc else "0")
+        xd = None
+        if disc_expr == "0":
+            # giảm giá đơn ghi ở bảng riêng (thông tin đơn: mã đơn + giảm đơn)
+            xd = next((t for (t,) in con.execute("SELECT table_name FROM information_schema.tables").fetchall()
+                       if not t.startswith("_") and t not in (O, L) and {"order_id", "order_discount"} <= _cols(con, t)), None)
+            if xd:
+                disc_expr = "COALESCE(ANY_VALUE(xd.g), 0)"
         ship_expr = ("COALESCE(ANY_VALUE(shipping_fee), 0)" if "shipping_fee" in oc
                      else "COALESCE(ANY_VALUE(lship), 0)" if "shipping_fee" in lc else "0")
         tot_expr = f"COALESCE(ANY_VALUE(amt), 0) - {disc_expr} + {ship_expr}"
         from_orders = f'"{O}" LEFT JOIN {lt} USING (order_id)'
+        if xd:
+            from_orders += (f' LEFT JOIN (SELECT CAST(order_id AS VARCHAR) k, ANY_VALUE(TRY_CAST(order_discount AS DOUBLE)) g '
+                            f'FROM "{xd}" GROUP BY 1) xd ON xd.k = CAST(order_id AS VARCHAR)')
 
     # Theo rulebook của bộ đề: "Đơn tính vào nợ | đơn ghi nợ"
     has_ghi_no_rule = False
@@ -557,12 +601,28 @@ def _debt_base(con):
     if has_ghi_no_rule and "payment_norm" in oc:
         pay_norm_select = ", ANY_VALUE(payment_norm) AS payment_norm"
         extra_filter = " AND payment_norm = 'ghi_no'"
+    # sổ thu chỉ ghi đơn ghi nợ (gần như không đơn trả ngay nào có dòng thu): tính theo sổ thu thì đơn trả ngay thành nợ
+    # cả đơn -> chỉ tính đơn ghi nợ (rulebook §4: nợ thêm / trả nợ chỉ của đơn ghi nợ)
+    if "payment_norm" in oc and not extra_filter:
+        r = con.execute(f"""SELECT COUNT(DISTINCT o.order_id) FILTER (WHERE COALESCE(o.payment_norm, '') <> 'ghi_no'),
+                COUNT(DISTINCT o.order_id) FILTER (WHERE COALESCE(o.payment_norm, '') <> 'ghi_no' AND p.k IS NOT NULL),
+                COUNT(DISTINCT o.order_id) FILTER (WHERE o.payment_norm = 'ghi_no')
+                FROM "{O}" o LEFT JOIN (SELECT DISTINCT CAST(order_id AS VARCHAR) k FROM "{P}") p
+                ON CAST(o.order_id AS VARCHAR) = p.k""").fetchone()
+        if r[2] and r[0] >= 20 and r[1] < 0.05 * r[0]:
+            pay_norm_select = ", ANY_VALUE(payment_norm) AS payment_norm"
+            extra_filter = " AND payment_norm = 'ghi_no'"
 
     od = (f'od AS (SELECT * FROM (SELECT {order_id_col} AS order_id, {tot_expr} AS tot, {d_col} AS d, '
           f'MIN({st}) st, BOOL_OR({ex}) ex, ANY_VALUE({cid}) cid, ANY_VALUE({cname}) cname, '
           f'COALESCE(BOOL_OR({walk}), FALSE) walk{pay_norm_select} FROM {from_orders} GROUP BY {order_id_col}) '
           f"WHERE COALESCE(st, '') <> 'huy' AND NOT COALESCE(ex, FALSE){extra_filter})")
-    pm = f'pm AS (SELECT order_id, CAST(payment_date AS DATE) pd, payment_amount amt FROM "{P}")'
+    pm = f'pm AS (SELECT order_id, CAST(payment_date AS DATE) pd, payment_amount amt FROM "{P}"'
+    if upfront:
+        dcol = "order_date" if "order_date" in oc else "order_time"
+        pm += (f' UNION ALL SELECT CAST(order_id AS VARCHAR), CAST(MIN({dcol}) AS DATE), '
+               f'ANY_VALUE(TRY_CAST(paid AS DOUBLE)) FROM "{upfront}" WHERE order_id IS NOT NULL GROUP BY order_id')
+    pm += ")"
     return od, pm
 
 

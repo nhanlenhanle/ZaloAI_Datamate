@@ -16,6 +16,7 @@ import duckdb
 from datamate.llm_query import rulebook_text
 from datamate.loader import llm
 from datamate.loader.parsers import fold
+from datamate.query.telex import sua_cau, sua_q
 from datamate.query.evaluate import HOLDOUT
 from datamate.query.facts import AT_DATE, BY_RANGE, FIELDS, MONEY, Facts, NoSource
 from datamate.query.plan import MissingData, PlanError, Runner, _is_part, _product_index, _q, resolve_period, to_record
@@ -181,7 +182,7 @@ _NUM = re.compile(r"\d[\d.,/:-]*")
 
 def mask(question: str, names: list[str] | None = None) -> set[str]:
     """Khung câu: bỏ dấu, che tên trong kế hoạch, che số; trả tập từ và cặp từ."""
-    q = f" {text_key(question)} "
+    q = f" {text_key(sua_cau(question))} "
     for n in sorted(names or [], key=len, reverse=True):
         k = text_key(n)
         if k:
@@ -834,6 +835,7 @@ def solve(ctx: ShopContext, q: dict, bank: ExampleBank, skip_shop=None, skip_kin
     """Một câu -> {'value', 'want', 'loai': tra_loi|ngoai_ky|thieu_nguon|llm_khong_co|khong_dong_thuan|loi, 'plans', ...}.
     Hỏi tối đa 3 lần, mỗi lần sai cú pháp được cho xem lỗi để viết lại một lần; chỉ nhận khi 2 lần ra CÙNG kết quả chạy.
     Quyết định nộp hay bỏ trống do bước sau."""
+    q = sua_q(q)
     today = dt.date.fromisoformat(q["as_of_date"])
     ex = bank.pick(q["question"], ctx.names_in(q["question"]), skip_shop=skip_shop, skip_kinds=skip_kinds, skip_id=q["id"],
                    skip_shops=skip_shops)

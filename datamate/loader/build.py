@@ -82,6 +82,9 @@ def _merge_kind(a: str | None, b: str | None) -> str | None:
 def _family(label: str) -> str:
     """'SoBan_1', 'SoBan_2026', 'SoBan__T07-2025' -> 'soban': cùng họ là các phần của một sổ."""
     s = fold(label).split("__")[0]
+    # dấu kỳ ở bất kỳ chỗ nào của tên: năm, tháng (T07), quý (Q1): 'SoBan_2025_qty_unit' / 'SoBan_2026_qty_unit',
+    # 'SoBan_Q1' / 'SoBan_Q2' là các phần của một sổ (trước chỉ bỏ số ở cuối -> hai sổ, một phần không được dùng)
+    s = re.sub(r"(^|[_\s.-]+)(q|quy|t|thang|nam)?\d+(?=$|[_\s.-])", "", s)
     return re.sub(r"([_\s.-]+(t|thang)?\d+)+$", "", s)
 
 
@@ -238,7 +241,9 @@ def table_role(cols: set[str]) -> str:
         return "price_history"
     if "stock_after" in cols:
         return "stock_moves"
-    if cols & {"delivery_round", "driver", "plate"}:
+    # biển số một mình không đủ: phiên sạc xe / phiếu sửa xe có biển số khách kèm tiền + hình thức trả là sổ bán
+    if cols & {"delivery_round", "driver"} or "plate" in cols and not (
+            cols & {"order_total", "line_amount"} and cols & {"payment_method", "status"}):
         return "deliveries"
     # phiếu khách trả: số lượng trả / ngày trả theo đơn hoặc mặt hàng, không có giá bán / thành tiền của dòng bán
     if cols & {"qty_returned", "qty_returned_base", "return_date"} and cols & {"order_id", "product_id", "product_name"}             and not cols & {"qty", "qty_base", "unit_price", "line_amount", "order_total", "purchase_id", "batch_id"}:
@@ -1183,6 +1188,39 @@ def join_time_only(df: pd.DataFrame, columns: list[dict]) -> int:
     return int(t.notna().sum())
 
 
+ROLE_OVERRIDE: dict[str, str] = {}
+
+
+def _line_discount_by_value(b: "Built") -> None:
+    """Cột số chưa map ở bảng có tiền dòng mà tỉ lệ với tiền dòng chỉ nhận vài mức (giảm thẻ 3% / 5%...) -> giảm giá
+    dòng. Theo giá trị trên TOÀN bộ sổ (giảm thưa, 300 dòng mẫu có thể không có dòng nào). sales_sql tự trừ khi sổ ghi
+    tiền dòng trước giảm."""
+    df = b.df
+    if "line_amount" not in df.columns or "line_discount" in df.columns:
+        return
+    known = {c["column"] for c in b.columns if c.get("canonical")}
+    amt = pd.to_numeric(df["line_amount"], errors="coerce")
+    for c in b.columns:
+        col = c["column"]
+        if col in known or col not in df.columns or c.get("kind") != "number" or col.startswith("_"):
+            continue
+        x = pd.to_numeric(df[col], errors="coerce")
+        ok = (x > 0) & (amt > 0)
+        if ok.sum() < 20:
+            continue
+        r = (x[ok] / amt[ok]).round(3)
+        top = r.value_counts().head(3)
+        if top.sum() >= 0.8 * ok.sum() and all(0 < v < 0.5 for v in top.index):
+            ren = {col: "line_discount"}
+            if f"{col}__raw" in df.columns:
+                ren[f"{col}__raw"] = "line_discount__raw"
+            b.df = df.rename(columns=ren)
+            c.update(column="line_discount", canonical="line_discount", map_source="value_rule", original=col,
+                     note=((c.get("note") or "") + " | tỉ lệ / tiền dòng gom vào "
+                           + ", ".join(f"{v:.0%}" for v in top.index) + ": giảm giá dòng").strip(" |"))
+            return
+
+
 def build_shop(shop: str, items: list[Built], readme, dropped_step1: list[dict], db_path: str,
                shared: dict | None = None, conventions: dict | None = None) -> dict:
     """items: mỗi bảng gốc đã đổi tên (name/role trống). shared: {"calendar", "rulebook"} của split.
@@ -1194,7 +1232,10 @@ def build_shop(shop: str, items: list[Built], readme, dropped_step1: list[dict],
     built, warnings = merge_split(items)
     used: set[str] = set()
     for b in built:
+        _line_discount_by_value(b)
         b.role = table_role(set(b.df.columns))
+        if fold(b.label) in ROLE_OVERRIDE:          # vòng tự sửa (loader/tu_sua.py)
+            b.role = ROLE_OVERRIDE[fold(b.label)]
         if b.role == "customers" and os.environ.get("DATAMATE_KHACH_KHONG_LAP"):   # tắt mặc định (FX3f)
             # danh sách khách: mỗi khách một dòng. Mã / tên khách lặp nhiều (sổ phiên, sổ nạp tiền...) là sổ sự việc
             key = next((c for c in ("customer_id", "customer_name") if c in b.df.columns), None)

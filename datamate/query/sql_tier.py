@@ -18,6 +18,7 @@ import duckdb
 
 from datamate.loader import llm
 from datamate.query import alias
+from datamate.query.telex import sua_q
 from datamate.query.compose import (ASKS_DAY, _ASKS_COUNT, _ASKS_DATE, _ASKS_NAMES, _ASKS_RX, _IS_DATE, _MONTH_YEAR, ExampleBank,
                                     RuleBank, ShopContext, _is_zero, _plan_names, asks_yes_no, column_meaning, holiday_block,
                                     mask, near_rules, period_text, readme_block, rule_rows, value_key)
@@ -293,7 +294,7 @@ def _prepare(ctx: ShopContext) -> None:
 def _views(ctx: ShopContext, sql: str, at: dt.date) -> None:
     """Dựng các bảng chuẩn SQL dùng tới. Thiếu nguồn: NoSource."""
     for fact in ("dong_ban", "don", "phieu_nhap", "dong_nhap", "dot_giao", "khoan_chi", "cong_no", "lo_hang", "ton"):
-        if f"v_{fact}" in sql:
+        if re.search(rf"\bv_{fact}\b", sql):   # "v_don" không được khớp nhầm trong "v_dong_ban"
             table = ctx.facts.table(fact, at=at if fact in AT_DATE else None)
             cols = {r[0] for r in ctx.con.execute(f'DESCRIBE "{table}"').fetchall()}
             month = ", strftime(ngay, '%Y-%m') thang" if "ngay" in cols and "thang" not in cols else ""
@@ -316,6 +317,21 @@ _TEXT_EQ = re.compile(r"\b((?:\w+\.)?(?:nhom_hang|nhom_khach|hoat_chat|ten_khach
 def _soft_eq(sql: str) -> str:
     """So bằng trên cột chữ -> khop (bỏ dấu, hoa thường), như kế hoạch so tên nhóm, hoạt chất, khách (§3)."""
     return _TEXT_EQ.sub(lambda m: f"khop({m[1]}, {m[2]})", sql)
+
+
+# Phủ định trên cột chữ có ô trống: "note NOT LIKE '%bảo hành%'", "trang_thai <> 'huy'" bỏ luôn mọi dòng ô đó trống
+# (NULL so với gì cũng không đúng), trong khi ý câu hỏi là "không phải ..." thì ô trống vẫn tính. Coi ô trống là chuỗi rỗng.
+_NEG_TEXT = re.compile(r"(?<![\w.\"(])((?:\w+\.)?(?:\w+|\"[^\"]+\"))\s+(NOT\s+I?LIKE)\s*$"
+                       r"|(?<![\w.\"(])((?:\w+\.)?(?:\w+|\"[^\"]+\"))\s*(<>|!=)\s*$", re.I)
+
+
+def _null_safe(sql: str) -> str:
+    parts = re.split(r"('(?:[^']|'')*')", sql)          # phần lẻ là chuỗi; phép so đứng ngay trước chuỗi nằm ở cuối phần chẵn
+    for k in range(0, len(parts) - 1, 2):
+        parts[k] = _NEG_TEXT.sub(
+            lambda m: (f"COALESCE(CAST({m[1]} AS VARCHAR), '') {m[2]} " if m[1]
+                       else f"COALESCE(CAST({m[3]} AS VARCHAR), '') {m[4]} "), parts[k])
+    return "".join(parts)
 
 
 _CODE = re.compile(r"(?<![\w])([A-Za-z]{1,4}[-_]?\d{1,6})(?![\w])")
@@ -694,7 +710,7 @@ def _attempt(ctx: ShopContext, out: dict, q: dict, today: dt.date) -> tuple:
         if hit:
             return "thieu_nguon", f"shop không ghi {hit[0]}", None, None, None
         return "llm_khong_co", why[:150], None, None, None
-    sql, ra = _dialect(_soft_eq(str(out.get("sql") or "").strip().rstrip(";"))), out.get("ra")
+    sql, ra = _dialect(_null_safe(_soft_eq(str(out.get("sql") or "").strip().rstrip(";")))), out.get("ra")
     if not sql:
         return "loi", "không có sql", sql, None, ra
     if ";" in sql or not re.match(r"(?is)\s*(select|with)\b", sql):
@@ -721,6 +737,7 @@ def _attempt(ctx: ShopContext, out: dict, q: dict, today: dt.date) -> tuple:
 def solve_sql(ctx: ShopContext, q: dict, temps=(0, 0.5, 0.9), bank: SqlBank | None = None, skip_shop=None, skip_kinds=None,
               skip_shops=None, rule_bank: RuleBank | None = None, skip_dong=None) -> dict:
     """Cùng cách bỏ phiếu với kế hoạch JSON: 2 lần ra cùng kết quả chạy mới nhận."""
+    q = sua_q(q)
     today = dt.date.fromisoformat(q["as_of_date"])
     ex = bank.pick(q["question"], ctx.names_in(q["question"]), skip_shop=skip_shop, skip_kinds=skip_kinds, skip_id=q["id"],
                    skip_shops=skip_shops) if bank else None

@@ -193,6 +193,9 @@ def year_from_text(*texts) -> int | None:
 STATUS_DONE, STATUS_CANCEL, STATUS_RETURN, STATUS_SHIPPING = "hoan_thanh", "huy", "tra_hang", "dang_giao"
 
 
+EXTRA_STATUS: dict[str, str] = {}
+
+
 def norm_status(v) -> str | None:
     """Trạng thái đơn -> 1 trong 4 mã của rulebook §8, None nếu không nhận ra.
 
@@ -202,12 +205,17 @@ def norm_status(v) -> str | None:
     if v is None:
         return None
     f = fold(v)
+    if EXTRA_STATUS and f.strip() in EXTRA_STATUS:      # vòng tự sửa (loader/tu_sua.py) quy định giá trị lạ
+        return EXTRA_STATUS[f.strip()]
     # huỷ: kể cả giao thất bại / bom hàng ("không giao được" là huỷ dù có chữ "không")
-    if re.search(r"\bhuy\b|khong giao duoc|giao (that bai|khong thanh cong)|^that bai$|\bbom\b|cancel|fail", f) \
+    # "lỗi" / "bị lỗi" đứng riêng là giao dịch lỗi, không thu tiền (phiên sạc lỗi...); "trả hàng - lỗi" vẫn là trả hàng
+    # khách không lấy nữa ("ko lấy nữa", "không lấy") là huỷ
+    if re.search(r"\bhuy\b|khong giao duoc|giao (that bai|khong thanh cong)|^that bai$|\bbom\b|cancel|fail|^(bi )?loi$"
+                 r"|\b(ko|k|khong) lay( nua)?\b", f) \
             and not re.search(r"\b(khong|chua) huy\b", f):
         return STATUS_CANCEL
     # trả HÀNG. Chữ "trả" đứng một mình không đủ: trả tiền, trả góp, trả trước, trả sau là chuyện thanh toán
-    if re.search(r"tra (lai )?hang|hang tra (lai|ve)|\btra lai\b|\btra ve\b|mang (ve )?tra|khach tra\s*$|doi tra|"
+    if re.search(r"tra (lai )?hang|hang tra (lai|ve)|\btra lai\b|\btra ve\b|mang (ve )?tra|(khach|\bkh) tra\s*$|doi tra|"
                  r"hoan (hang|tra|tien)|return|refund", f) \
             and not re.search(r"tra (tien|gop|truoc|sau|no|du|het|coc)", f):
         return STATUS_RETURN
@@ -216,7 +224,7 @@ def norm_status(v) -> str | None:
                  r"processing", f):
         return STATUS_SHIPPING
     # phủ định ("chưa hoàn thành", "không thành công"): không kết luận hoàn thành, để lớp sau (LLM) quyết
-    if not neg and re.search(r"hoan thanh|\bxong\b|da lay|thanh cong|^ok$|complete|da giao|done|success|"
+    if not neg and re.search(r"hoan thanh|hoan tat|\bxong\b|da lay|thanh cong|^ok$|complete|da giao|giao roi|lay roi|done|success|"
                              r"delivered", f):
         return STATUS_DONE
     return None

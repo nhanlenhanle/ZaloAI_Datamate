@@ -176,7 +176,7 @@ class Facts:
                    s.d AS ngay, {hour} AS gio,
                    CASE WHEN {hour} BETWEEN 6 AND 13 THEN 'sang' WHEN {hour} BETWEEN 14 AND 21 THEN 'chieu' END AS ca,
                    isodow(s.d) AS thu, strftime(s.d, '%Y-%m') AS thang,
-                   s.st AS trang_thai, {OK_ORDER.replace('st ', 's.st ')} AS hop_le,
+                   CAST(s.st AS VARCHAR) AS trang_thai, {OK_ORDER.replace('st ', 's.st ')} AS hop_le,
                    s.amt AS tien, ({lt}) = 'hang' AS la_mat_hang,
                    CAST(s.pid AS VARCHAR) AS ma_hang, CAST(s.pkey AS VARCHAR) AS khoa_hang,
                    COALESCE(CAST(s.pid AS VARCHAR), CAST(s.pkey AS VARCHAR)) AS hang,

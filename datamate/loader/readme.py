@@ -182,8 +182,10 @@ def parse_readme(path: str) -> ReadmeInfo:
                 section, cur_file, cur_sheet = "cols", m[1], m[2]
             else:
                 head = fold(s[3:])
-                section = ("files" if head.startswith("file") else "tables" if head.startswith("bang")
-                           else "conv" if head.startswith("quy uoc") else "other")
+                # README viết tay đặt tên mục tuỳ ý ("Các file", "Ghi chú", "Lưu ý khi đọc số liệu"...): mục nào không phải
+                # danh sách file / bảng / cột thì là quy ước (trước đây chỉ nhận "Quy ước" -> mất hết quy ước)
+                section = ("files" if re.search(r"\bfile\b", head) else "tables" if head.startswith("bang")
+                           else "conv")
             continue
         if section == "intro":
             if s:
@@ -218,6 +220,10 @@ def parse_readme(path: str) -> ReadmeInfo:
                     info.conversion_files.extend(re.findall(r"`([^`]+)`", cm[1]))
                 for hm in _HINT.finditer(body):
                     desc = hm[2].strip()
+                    # "các dòng cùng **STT** là một đơn": cột đó là mã đơn (sổ ghi tay đánh số thứ tự đơn)
+                    if re.search(r"cùng\s*$", body[:hm.start(1)], re.I) and re.match(
+                            r"(một|1)\s+(đơn|hoá đơn|hóa đơn|bill|phiếu bán)", desc, re.I):
+                        desc = "mã đơn (các dòng cùng giá trị là một đơn)"
                     for ref in re.findall(_REF, hm[1]):
                         name = _strip_ref(ref)
                         table = None
