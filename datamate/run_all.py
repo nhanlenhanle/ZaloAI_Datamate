@@ -30,7 +30,7 @@ from datamate.loader.repair import repair_column
 from datamate.loader.conventions import read_conventions
 from datamate.loader.header import Table, load_tables
 from datamate.loader.mapping import TableInput, build_name_dict, map_shop, with_base
-from datamate.loader.parsers import norm_status, parse_column, parse_number, year_from_text
+from datamate.loader.parsers import fold, norm_status, parse_column, parse_number, year_from_text
 from datamate.loader.read_files import read_shop
 from datamate.loader.readme import ReadmeInfo, parse_readme
 from datamate.loader.shopmeta import load_calendar, parse_rulebook, split_root
@@ -97,9 +97,19 @@ def _readme_text(info: ReadmeInfo) -> str:
 
 def run_shop(shop_dir: str, out_dir: str, readme: ReadmeInfo, name_dict: dict[str, str],
              write_tables: bool = True, build: bool = True, shared: dict | None = None,
-             use_llm: bool = False) -> dict:
+             use_llm: bool = False, sua: dict | None = None) -> dict:
     t0 = time.time()
+    sua = sua or {}
     tables, warnings = load_tables(read_shop(shop_dir))
+    bo = {fold(str(x)).strip() for x in sua.get("bo_dong") or [] if str(x).strip()}
+    if bo:      # vòng tự sửa: bỏ dòng có ô chữ đúng nhãn (dòng tổng / dòng ghi chú lọt bước cắt bảng)
+        for t in tables:
+            keep = [i for i, r in enumerate(t.rows)
+                    if not any(isinstance(c, str) and fold(c).strip() in bo for c in r)]
+            if len(keep) < len(t.rows):
+                t.dropped += [(t.src[i][0], t.src[i][1], "tự sửa: dòng nhãn bỏ", str(t.rows[i])[:80])
+                              for i in range(len(t.rows)) if i not in set(keep)]
+                t.rows, t.src = [t.rows[i] for i in keep], [t.src[i] for i in keep]
     for sub in ("tables", "samples"):
         os.makedirs(os.path.join(out_dir, sub), exist_ok=True)
     profiles, dropped, inputs, dfs = [], [], [], []
@@ -116,7 +126,13 @@ def run_shop(shop_dir: str, out_dir: str, readme: ReadmeInfo, name_dict: dict[st
                        for s, r, why, txt in t.dropped)
 
     mappings, items = [], []
+    over = {fold(k): {c: v for c, v in d.items()} for k, d in (sua.get("cot") or {}).items()}
     for tin, maps, df in zip(inputs, map_shop(inputs, readme, name_dict, use_llm=use_llm).values(), dfs):
+        for m in maps:          # vòng tự sửa: cột gốc -> tên chuẩn (null = bỏ tên chuẩn)
+            d = over.get(fold(tin.name)) or over.get(fold(tin.name.split("__")[0])) or {}
+            if m.column in d:
+                m.canonical, m.source = d[m.column], "tu_sua"
+                m.note = (m.note + " | " if m.note else "") + "tự sửa"
         if build:
             rdf, cols = rename_columns(df, maps, tin.kinds)
             items.append(Built("", tin.name, "", rdf, cols, [tin.name]))
@@ -140,8 +156,14 @@ def run_shop(shop_dir: str, out_dir: str, readme: ReadmeInfo, name_dict: dict[st
     # quy ước trong README (tiền theo nghìn, trạng thái ghi ở cột khác...): LLM đọc, build kiểm rồi áp dụng
     conventions = read_conventions(readme, {t.name: list(t.columns) for t in tables}) if use_llm else {}
     if build:
-        bres = build_shop(shop, items, readme, dropped, os.path.join(out_dir, f"{shop}.duckdb"), shared,
-                          conventions)
+        from datamate.loader import build as _b, parsers as _p
+        _p.EXTRA_STATUS = {fold(str(k)).strip(): v for k, v in (sua.get("trang_thai") or {}).items()}
+        _b.ROLE_OVERRIDE = {fold(k): v for k, v in (sua.get("vai_tro") or {}).items()}
+        try:
+            bres = build_shop(shop, items, readme, dropped, os.path.join(out_dir, f"{shop}.duckdb"), shared,
+                              conventions)
+        finally:
+            _p.EXTRA_STATUS, _b.ROLE_OVERRIDE = {}, {}
         pd.DataFrame([{"table_name": n, **{k: (v if not isinstance(v, (dict, list)) else str(v))
                                            for k, v in s.items()}} for n, s in bres["tables"].items()]
                      ).to_csv(os.path.join(out_dir, "_build.csv"), index=False, encoding="utf-8-sig")
@@ -222,6 +244,18 @@ def main():
         except Exception as e:      # một shop lỗi chỉ mất câu của shop đó, không dừng cả bộ
             print(f"{shop}: LỖI {type(e).__name__}: {str(e)[:200]}", flush=True)
             continue
+        if args.llm and not args.no_build and os.environ.get("DATAMATE_TU_SUA"):
+            # vòng tự sửa: khám DB vừa dựng, LLM đề xuất đọc lại sổ, chỉ nhận khi khám lại đỡ hơn
+            from datamate.loader import tu_sua
+            sd, nd = os.path.join(args.split_dir, shop), name_dict
+            try:
+                nhan = tu_sua.vong(lambda sua, out, sd=sd, nd=nd, shop=shop: run_shop(
+                    sd, out, readmes[shop], nd, write_tables=not args.skip_tables, build=True, shared=shared,
+                    use_llm=args.llm, sua=sua), os.path.join(split_out, shop), sd)
+                if nhan:
+                    print(f"{shop}: tự sửa {json.dumps(nhan, ensure_ascii=False)[:300]}", flush=True)
+            except Exception as e:
+                print(f"{shop}: tự sửa LỖI {type(e).__name__}: {str(e)[:200]}", flush=True)
         rows.append(r)
         print(f"{shop}: {r['tables']} bảng -> {r['tables_out']}, {r['rows']} dòng, ô lỗi={r['fail_cells']}, "
               f"map {r['mapped']}/{r['mappable_cols']} cột, bỏ trùng {r['dup_dropped']} ({r['seconds']}s)",

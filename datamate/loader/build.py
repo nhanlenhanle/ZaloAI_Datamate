@@ -82,6 +82,9 @@ def _merge_kind(a: str | None, b: str | None) -> str | None:
 def _family(label: str) -> str:
     """'SoBan_1', 'SoBan_2026', 'SoBan__T07-2025' -> 'soban': cùng họ là các phần của một sổ."""
     s = fold(label).split("__")[0]
+    # dấu kỳ ở bất kỳ chỗ nào của tên: năm, tháng (T07), quý (Q1): 'SoBan_2025_qty_unit' / 'SoBan_2026_qty_unit',
+    # 'SoBan_Q1' / 'SoBan_Q2' là các phần của một sổ (trước chỉ bỏ số ở cuối -> hai sổ, một phần không được dùng)
+    s = re.sub(r"(^|[_\s.-]+)(q|quy|t|thang|nam)?\d+(?=$|[_\s.-])", "", s)
     return re.sub(r"([_\s.-]+(t|thang)?\d+)+$", "", s)
 
 
@@ -90,8 +93,46 @@ def _near_set(a: frozenset, b: frozenset) -> bool:
     return len(a & b) >= 3 and len(a & b) / len(a | b) >= NEAR_COLUMNS
 
 
+def _line_discount_data(dfs: list[pd.DataFrame]) -> bool:
+    """Giảm theo dòng: >= 20 dòng có giảm, tỉ lệ giảm / (qty x unit_price) gom vào <= 3 mức chiếm >= 80%."""
+    parts = [df[["line_discount", "qty", "unit_price"]] for df in dfs
+             if {"line_discount", "qty", "unit_price"} <= set(df.columns)]
+    if not parts:
+        return False
+    x = pd.concat(parts).apply(pd.to_numeric, errors="coerce")
+    x = x[(x["line_discount"] > 0) & (x["qty"] * x["unit_price"] > 0)]
+    if len(x) < 20:
+        return False
+    r = (x["line_discount"] / (x["qty"] * x["unit_price"])).round(3)
+    return r.value_counts().head(3).sum() >= 0.8 * len(x)
+
+
 def _align_parts(g: list[Built]) -> None:
-    """Cột chuẩn chỉ một số phần có và chỉ do LLM đoán: không đủ chắc để gọi là cột chuẩn của cả sổ, trả về tên gốc."""
+    """Cột chuẩn chỉ một số phần có và chỉ do LLM đoán: không đủ chắc để gọi là cột chuẩn của cả sổ, trả về tên gốc.
+    Trước đó: phần khác có cùng tên cột gốc mà chưa map (và chưa có cột chuẩn đó) thì nhận cùng tên chuẩn: cùng một sổ,
+    cùng tên cột là cùng nghĩa (LLM có thể đoán khác nhau giữa các phần, vd GiamThe dòng / đơn ở hai file năm).
+    Nhãn LLM sai được cả hai chiều (biz_605 "Bớt" cả bill bị gán giảm dòng) -> chỉ lan khi dữ liệu xác nhận:
+    hiện chỉ line_discount, khi tỉ lệ giảm / (SL x giá) trên mọi phần gom vào <= 3 mức (giảm theo dòng, vd thẻ 3% / 5%)."""
+    for b in g:
+        for c in b.columns:
+            col, orig = c["column"], c.get("original")
+            if c.get("map_source") != "llm" or not c.get("canonical") or not orig or col not in b.df:
+                continue
+            if c["canonical"] != "line_discount" or not _line_discount_data(
+                    [x.df.rename(columns={orig: col}) for x in g]):
+                continue
+            for x in g:
+                if x is b or col in x.df or orig not in x.df:
+                    continue
+                xc = next((y for y in x.columns if y["column"] == orig), None)
+                if xc is None or xc.get("canonical"):
+                    continue
+                ren = {orig: col}
+                if f"{orig}__raw" in x.df:
+                    ren[f"{orig}__raw"] = f"{col}__raw"
+                x.df = x.df.rename(columns=ren)
+                xc.update(column=col, canonical=c["canonical"], map_source="llm",
+                          note=((xc.get("note") or "") + " | theo phần khác của sổ").strip(" |"))
     for b in g:
         for c in b.columns:
             col, orig = c["column"], c.get("original")
@@ -183,6 +224,7 @@ ROLE_DESC = {
     "deliveries": "giao hàng theo đợt",
     "debt_terms": "hạn nợ của đơn",
     "debts": "sổ nợ",
+    "returns": "phiếu khách trả hàng (mã đơn, mặt hàng, số lượng trả, ngày trả)",
     "other": "bảng khác (giữ nguyên)",
 }
 
@@ -199,8 +241,13 @@ def table_role(cols: set[str]) -> str:
         return "price_history"
     if "stock_after" in cols:
         return "stock_moves"
-    if cols & {"delivery_round", "driver", "plate"}:
+    # biển số một mình không đủ: phiên sạc xe / phiếu sửa xe có biển số khách kèm tiền + hình thức trả là sổ bán
+    if cols & {"delivery_round", "driver"} or "plate" in cols and not (
+            cols & {"order_total", "line_amount"} and cols & {"payment_method", "status"}):
         return "deliveries"
+    # phiếu khách trả: số lượng trả / ngày trả theo đơn hoặc mặt hàng, không có giá bán / thành tiền của dòng bán
+    if cols & {"qty_returned", "qty_returned_base", "return_date"} and cols & {"order_id", "product_id", "product_name"}             and not cols & {"qty", "qty_base", "unit_price", "line_amount", "order_total", "purchase_id", "batch_id"}:
+        return "returns"
     if "credit_days" in cols and not item:
         return "debt_terms"
     # mã thanh toán ghi trên sổ đơn (có mã + ngày đơn, không có tiền thanh toán) thì vẫn là sổ đơn
@@ -284,6 +331,35 @@ def fill_order_groups(df: pd.DataFrame, key: str, cols: list[str]) -> dict[str, 
                 df[col] = new
                 filled[col] = n
     return filled
+
+
+DAY_FILL = os.environ.get("DATAMATE_DAY_FILL", "1") != "0"
+
+
+def fill_day_dates(df: pd.DataFrame, dcol: str) -> int:
+    """Sổ tay ghi ngày một lần cho cả ngày, các đơn sau cùng ngày để trống ngày (§8 điền xuống).
+    Sau khi đã điền trong đơn, nếu vẫn còn nhiều dòng trống ngày và các ngày đã ghi đi lên theo thứ tự dòng
+    trong từng file / sheet, thì dòng trống ngày lấy ngày của dòng có ngày gần nhất phía trên (cùng file / sheet)."""
+    if not DAY_FILL or dcol not in df.columns:
+        return 0
+    d = df[dcol]
+    if d.isna().mean() < 0.2 or d.notna().sum() < 10:
+        return 0
+    parts = [df[c].astype(str) for c in ("_src_file", "_src_sheet") if c in df.columns]
+    part = (parts[0] + "|" + parts[1]) if len(parts) == 2 else parts[0] if parts else pd.Series("", index=df.index)
+    nn = d.notna()
+    prev = d[nn].groupby(part[nn]).shift()
+    step = prev.notna()
+    if step.sum() < 5 or (d[nn][step] < prev[step]).mean() > 0.02:
+        return 0
+    n = 0
+    for col in (dcol, f"{dcol}__raw"):
+        if col in df.columns:
+            new = df[col].groupby(part).ffill()
+            if col == dcol:
+                n = int((df[col].isna() & new.notna()).sum())
+            df[col] = new
+    return n
 
 
 # cột cấp dòng: ô trống là trống thật, không lấy theo dòng đầu đơn
@@ -412,13 +488,22 @@ def reconcile_status(built: list["Built"]) -> dict:
       ghi trả -> đơn trả hàng (§1: trả một phần cũng là đơn trả), trừ đơn đã huỷ.
     Chỉ xét bảng bán (không xét bảng nhập: trả hàng cho nhà cung cấp là chuyện khác).
     """
-    sales = [b for b in built if b.role in ("sales_lines", "orders", "order_info", "sales_batches", "other")
+    sales = [b for b in built if b.role in ("sales_lines", "orders", "order_info", "sales_batches", "returns", "other")
              and "order_id" in b.df.columns]
+    # đơn đã có cột trạng thái thật (rulebook: chỉ sổ KHÔNG có cột trạng thái mới đọc trạng thái ở ghi chú):
+    # trạng thái đọc từ ghi chú của bảng khác không được đè lên
+    by_col = set()
+    for b in sales:
+        if b.stats.get("status_source") == "status" and "status_norm" in b.df.columns:
+            by_col |= set(b.df.loc[b.df["status_norm"].notna(), "order_id"].astype(str))
     rank = {}
     for b in sales:
         if "status_norm" in b.df.columns:
             r = b.df["status_norm"].map(_STATUS_RANK).groupby(b.df["order_id"].astype(str)).min().dropna()
+            note = b.stats.get("status_source") == "order_note"
             for k, v in r.items():
+                if note and k in by_col:
+                    continue
                 rank[k] = min(rank.get(k, 9), v)
     returned: dict[str, str] = {}
     for b in sales:
@@ -689,7 +774,8 @@ def collect_aliases(built: list[Built], ab: dict | None) -> pd.DataFrame:
         for c in b.columns:
             col = c["column"]
             # chỉ cột gốc chưa có tên chuẩn (cột build tự thêm có mô tả chứa "ghi tắt" nhưng không phải tên gọi)
-            if c.get("map_source") == "derived" or c.get("canonical"):
+            # "name" (tên chung chưa xếp) cạnh product_name mà tên gốc là "tên gọi khác" vẫn là cột tên gọi khác
+            if c.get("map_source") == "derived" or (c.get("canonical") and c.get("canonical") != "name"):
                 continue
             if col in b.df.columns and c.get("kind") == "text" and col != "product_name" and (
                     _ALIAS_COL.search(fold(c.get("original") or col)) or
@@ -814,10 +900,35 @@ def _conv_rows_from_text(v, base=None) -> list[tuple[str, float, str]]:
     return out
 
 
+def _unit_like_col(b: "Built", skip: str, seen_units: set) -> pd.Series:
+    """Bảng chưa có cột base_unit: cột chữ khác mà >= 80% giá trị là đơn vị đã thấy ở sổ (vd "ĐV cơ bản" chưa ánh xạ)."""
+    df = b.df
+    empty = pd.Series([None] * len(df), index=df.index)
+    if not seen_units:
+        return empty
+    best, best_r = None, 0.0
+    for c in df.columns:
+        if c == skip or c.startswith("_") or c.endswith("__raw") or df[c].dtype != object:
+            continue
+        v = df[c].dropna()
+        if len(v) < 3:
+            continue
+        r = v.map(text_key).isin(seen_units).mean()
+        if r >= 0.8 and r > best_r:
+            best, best_r = c, r
+    return df[best] if best is not None else empty
+
+
 def collect_conversions(built: list[Built], readme) -> pd.DataFrame:
     """Mọi dòng quy đổi của shop: bảng quy đổi, cột chữ '1 thùng = 4 bịch' trong danh mục, README.
     Kết quả mỗi dòng: (product_id, product_name, product_key, unit, factor, base_unit, source)."""
     rows = []
+    # đơn vị đã thấy ở các cột đơn vị (để nhận cột "đơn vị cơ bản" chưa ánh xạ theo giá trị)
+    seen_units = set()
+    for b in built:
+        for uc in ("unit", "base_unit", "big_unit"):
+            if uc in b.df.columns:
+                seen_units |= {text_key(v) for v in b.df[uc].dropna().unique()} - {None}
     for b in built:
         df, cols = b.df, set(b.df.columns)
         pid = df["product_id"] if "product_id" in cols else pd.Series([None] * len(df))
@@ -833,7 +944,7 @@ def collect_conversions(built: list[Built], readme) -> pd.DataFrame:
             col = c["column"]
             if c["kind"] != "text" or col not in cols:
                 continue
-            base = df["base_unit"] if "base_unit" in cols else pd.Series([None] * len(df), index=df.index)
+            base = df["base_unit"] if "base_unit" in cols else _unit_like_col(b, col, seen_units)
             vals = df[col].dropna()
             if len(vals) < 3 or sum(bool(_conv_rows_from_text(v, base[i])) for i, v in vals.items()) < 0.9 * len(vals):
                 continue
@@ -1077,16 +1188,60 @@ def join_time_only(df: pd.DataFrame, columns: list[dict]) -> int:
     return int(t.notna().sum())
 
 
+ROLE_OVERRIDE: dict[str, str] = {}
+
+
+def _line_discount_by_value(b: "Built") -> None:
+    """Cột số chưa map ở bảng có tiền dòng mà tỉ lệ với tiền dòng chỉ nhận vài mức (giảm thẻ 3% / 5%...) -> giảm giá
+    dòng. Theo giá trị trên TOÀN bộ sổ (giảm thưa, 300 dòng mẫu có thể không có dòng nào). sales_sql tự trừ khi sổ ghi
+    tiền dòng trước giảm."""
+    df = b.df
+    if "line_amount" not in df.columns or "line_discount" in df.columns:
+        return
+    known = {c["column"] for c in b.columns if c.get("canonical")}
+    amt = pd.to_numeric(df["line_amount"], errors="coerce")
+    for c in b.columns:
+        col = c["column"]
+        if col in known or col not in df.columns or c.get("kind") != "number" or col.startswith("_"):
+            continue
+        x = pd.to_numeric(df[col], errors="coerce")
+        ok = (x > 0) & (amt > 0)
+        if ok.sum() < 20:
+            continue
+        r = (x[ok] / amt[ok]).round(3)
+        top = r.value_counts().head(3)
+        if top.sum() >= 0.8 * ok.sum() and all(0 < v < 0.5 for v in top.index):
+            ren = {col: "line_discount"}
+            if f"{col}__raw" in df.columns:
+                ren[f"{col}__raw"] = "line_discount__raw"
+            b.df = df.rename(columns=ren)
+            c.update(column="line_discount", canonical="line_discount", map_source="value_rule", original=col,
+                     note=((c.get("note") or "") + " | tỉ lệ / tiền dòng gom vào "
+                           + ", ".join(f"{v:.0%}" for v in top.index) + ": giảm giá dòng").strip(" |"))
+            return
+
+
 def build_shop(shop: str, items: list[Built], readme, dropped_step1: list[dict], db_path: str,
                shared: dict | None = None, conventions: dict | None = None) -> dict:
     """items: mỗi bảng gốc đã đổi tên (name/role trống). shared: {"calendar", "rulebook"} của split.
     conventions: quy ước README đã đọc (loader/conventions.py). Ghi db_path, trả thống kê."""
     shared = shared or {}
     conventions = conventions or {}
+    rb = shared.get("rulebook")
+    labels.set_rules(list(rb["text"]) if rb is not None and len(rb) else [])
     built, warnings = merge_split(items)
     used: set[str] = set()
     for b in built:
+        _line_discount_by_value(b)
         b.role = table_role(set(b.df.columns))
+        if fold(b.label) in ROLE_OVERRIDE:          # vòng tự sửa (loader/tu_sua.py)
+            b.role = ROLE_OVERRIDE[fold(b.label)]
+        if b.role == "customers" and os.environ.get("DATAMATE_KHACH_KHONG_LAP"):   # tắt mặc định (FX3f)
+            # danh sách khách: mỗi khách một dòng. Mã / tên khách lặp nhiều (sổ phiên, sổ nạp tiền...) là sổ sự việc
+            key = next((c for c in ("customer_id", "customer_name") if c in b.df.columns), None)
+            v = b.df[key].dropna() if key else None
+            if v is not None and len(v) >= 20 and v.nunique() < 0.8 * len(v):
+                b.role = "other"
         b.name = sql_name(b.label, used)
     conventions = drop_contradicted(conventions, {c for b in built for c in b.df.columns})
     conv_stats = apply_money_scale(built, conventions.get("money_scale"))
@@ -1107,6 +1262,8 @@ def build_shop(shop: str, items: list[Built], readme, dropped_step1: list[dict],
         key = "order_id" if "order_id" in df.columns else "purchase_id" if "purchase_id" in df.columns else None
         if key and b.role not in ("products", "customers", "price_history", "stock", "unit_conversions"):
             st["filled"] = fill_order_groups(df, key, ORDER_LEVEL if key == "order_id" else PURCHASE_LEVEL)
+            if n_day := fill_day_dates(df, "order_date" if key == "order_id" else "purchase_date"):
+                st["day_filled"] = n_day
         if key == "order_id" and b.role in ("sales_lines", "orders", "sales_batches", "order_info"):
             df, dups = drop_dup_lines(df, key)
             st["dup_dropped"] = len(dups)

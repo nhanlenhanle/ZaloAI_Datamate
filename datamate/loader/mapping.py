@@ -165,8 +165,18 @@ BUILTIN_NAMES = {
     # tên chung: là tên hàng / khách / NCC / nhân viên tuỳ mã của bảng (_resolve_context)
     "ten": "name", "ten goi": "name", "ho ten": "name", "ho va ten": "name",
     "gia von": "unit_cost", "gia von hang": "unit_cost", "gia von hien tai": "unit_cost",
+    "so tien": "money",          # tiền chung: _resolve_context xếp thành tiền thu / tiền chi / thành tiền theo bảng
     "con kinh doanh": "active",
 }
+# NV4: tên cột phổ thông, tắt mặc định (bật DATAMATE_NV4=1)
+_NV4_NAMES = {
+    "dv co ban": "base_unit", "dvt co ban": "base_unit", "don vi co ban": "base_unit",
+    "tong don": "order_total", "tong phai tra": "order_total",
+    "ma hv": "customer_id", "ma hoi vien": "customer_id",
+    "thanh toan": "payment_method", "hinh thuc thanh toan": "payment_method", "httt": "payment_method", "hinh thuc tt": "payment_method",
+}
+if os.environ.get("DATAMATE_NV4"):   # NV4 tắt mặc định (FX3d: đổi prompt LLM, biz_203 / 201 mất câu)
+    BUILTIN_NAMES.update(_NV4_NAMES)
 
 # chữ chỉ đối tượng trong tên cột "Tên ..." (khách xét trước: "khách hàng" có chữ "hàng")
 _ENTITY_WORDS = [(re.compile(r"\bkhach\b|\bkh\b|customer"), "customer_name"),
@@ -317,6 +327,8 @@ def time_only(vals) -> bool:
 
 
 def _kind_ok(canon: str, kind: str, vals=()) -> bool:
+    if canon == "payment_method" and kind == "number":
+        return False
     if canon == "order_time" and kind == "text":
         return time_only(vals)
     if canon in NUMBER:
@@ -340,6 +352,12 @@ def map_table(table: str, columns: list[str], kinds: dict[str, str], samples: di
         f = fold(col)
         cand: list[tuple[str | None, str, str | None]] = []   # (canonical, source, description)
         d = by_name.get(f)
+        # mô tả trong ngoặc ngay sau tên cột (README kiểu "**Tên** (ghi chú)") chỉ là ghi chú, có thể nhắc
+        # tới cột khác ("= tổng thành tiền dòng − ..."): tên cột đã có trong từ điển thì tin tên trước
+        if d is not None and d.source == "inline" and (
+                (name_key(col) in name_dict and not accent_clash(col, name_key(col), name_dict))
+                or name_key(col) in BUILTIN_NAMES):
+            d = None
         if d is not None:
             ok, canon = desc_to_canonical(d.description)
             if ok:
@@ -503,7 +521,157 @@ def map_shop(tables: list[TableInput], readme, name_dict: dict[str, str], use_re
         _resolve_duplicates(maps)
     if use_llm:
         _llm_pass(tables, results, units)
+        link_line_ids(tables, results)
+    link_payment_books(tables, results)
+    order_discount_names(tables, results)
+    sale_ids_not_purchase(results)
+    payment_method_values(tables, results)
     return results
+
+
+def line_discount_values(tables: list[TableInput], results: dict[str, list[ColumnMap]]) -> None:
+    """Cột số chưa map ở bảng dòng bán mà tỉ lệ với tiền dòng chỉ nhận vài mức (giảm thẻ 3% / 5%...) -> giảm giá dòng.
+    Theo giá trị, không theo tên cột. sales_sql tự trừ khi sổ ghi tiền dòng TRƯỚC giảm (S5c)."""
+    for t in tables:
+        maps = results[t.name]
+        present = {m.canonical for m in maps}
+        if "line_discount" in present or "line_amount" not in present:
+            continue
+        amt_col = next(m.column for m in maps if m.canonical == "line_amount")
+        amt = t.parsed.get(amt_col) or []
+        for m in maps:
+            if m.canonical is not None or t.kinds.get(m.column) != "number":
+                continue
+            vals = t.parsed.get(m.column) or []
+            rs = []
+            for x, a_ in zip(vals, amt):
+                try:
+                    x, a_ = float(x), float(a_)
+                except (TypeError, ValueError):
+                    continue
+                if x == x and a_ == a_ and x > 0 and a_ > 0:
+                    rs.append(round(x / a_, 3))
+            if len(rs) < 8:
+                continue
+            top = sorted(((rs.count(r), r) for r in set(rs)), reverse=True)[:3]
+            if sum(n for n, _ in top) >= 0.8 * len(rs) and all(0 < r < 0.5 for _, r in top):
+                m.canonical, m.source = "line_discount", m.source or "value_rule"
+                m.note = (m.note + " | " if m.note else "") + \
+                    "tỉ lệ / tiền dòng gom vào " + ", ".join(f"{r:.0%}" for _, r in top) + ": giảm giá dòng"
+                break
+
+
+_PAY_COL = re.compile(r"thanh toan|hinh thuc|pttt|\btt\b|tra kieu|kieu tra|cach tra")
+
+
+def payment_method_values(tables: list[TableInput], results: dict[str, list[ColumnMap]]) -> None:
+    """Cột chữ "Thanh toán" chưa map (từ điển gán "đã trả" nhưng giá trị là chữ): >= 80% giá trị chuẩn hoá được thành
+    hình thức thanh toán (TM, CK, ví, nợ...) -> payment_method."""
+    from .build import _PAYMENT_NORM
+    for t in tables:
+        maps = results[t.name]
+        present = {m.canonical for m in maps}
+        if "payment_method" in present or not present & {"order_id", "order_date", "line_amount", "order_total"}:
+            continue
+        for m in maps:
+            if m.canonical is not None or not _PAY_COL.search(name_key(m.column)):
+                continue
+            vs = [fold(str(v)).replace("_", " ") for v in t.raw.get(m.column, []) if v is not None and str(v).strip()]
+            if len(vs) >= 20 and sum(any(rx.search(v) for rx, _ in _PAYMENT_NORM) for v in vs) >= 0.8 * len(vs):
+                m.canonical, m.source = "payment_method", m.source or "value_rule"
+                m.note = (m.note + " | " if m.note else "") + "giá trị là hình thức thanh toán"
+                break
+
+
+def sale_ids_not_purchase(results: dict[str, list[ColumnMap]]) -> None:
+    """LLM gán mã giao dịch là mã phiếu nhập (purchase_id) ở bảng không có dấu hiệu nhập hàng (nhà cung cấp, ngày nhập,
+    trạng thái phiếu nhập) mà có ngày / giờ bán hoặc hình thức khách trả: là mã đơn bán (vd phiên sạc xe, phiếu dịch vụ)."""
+    for maps in results.values():
+        present = {m.canonical for m in maps}
+        if "order_id" in present or present & {"supplier_name", "supplier_id", "purchase_date", "purchase_status"}:
+            continue
+        if not present & {"order_date", "order_time", "payment_method"} or not present & {"order_total", "line_amount"}:
+            continue
+        for m in maps:
+            if m.canonical == "purchase_id" and m.source == "llm":
+                m.canonical = "order_id"
+                m.note = (m.note + " | " if m.note else "") + "bảng không có dấu hiệu nhập hàng, có ngày bán / thanh toán: mã đơn"
+
+
+_ORDER_DISC_NAME = re.compile(r"^(tien |giam )?voucher$|^giam (gia )?(ca )?(don|bill|hoa don)$|^chiet khau (ca )?(don|bill)$")
+
+
+def order_discount_names(tables: list[TableInput], results: dict[str, list[ColumnMap]]) -> None:
+    """Cột số "Voucher" / "Giảm giá đơn" chưa map ở bảng bán -> giảm giá cả đơn (rulebook: doanh thu không trừ, nợ thì trừ).
+    Cột ghi mã voucher (chữ) không đụng. Chạy sau LLM nên prompt dựng DB không đổi."""
+    for t in tables:
+        maps = results[t.name]
+        present = {m.canonical for m in maps}
+        if "order_discount" in present or not present & {"order_id", "line_amount", "order_total"}:
+            continue
+        for m in maps:
+            if m.canonical is None and _ORDER_DISC_NAME.search(name_key(m.column)) and t.kinds.get(m.column) == "number":
+                m.canonical, m.source = "order_discount", m.source or "builtin"
+                m.note = (m.note + " | " if m.note else "") + "tiền voucher / giảm cả đơn"
+                break
+
+
+def _shape(v) -> str:
+    return re.sub(r"[A-Za-z]", "A", re.sub(r"\d", "9", str(v).strip()))
+
+
+def link_payment_books(tables: list[TableInput], results: dict[str, list[ColumnMap]]) -> None:
+    """Sổ thu nợ theo đợt ("Ngày trả", "Khách", "Hóa đơn", "Số tiền"): có ngày trả, không có mã đơn, không có dòng hàng.
+    Cột chữ chưa map mà giá trị là mã đơn của bảng khác (trùng >= 50% hoặc cùng dạng >= 90%) -> order_id; tiền chung /
+    tiền đơn của bảng đó -> tiền trả lần đó (payment_amount). Không có bước này bảng thành danh sách khách, nợ không tính."""
+    raw = {t.name: t.raw for t in tables}
+    ids, shapes = set(), set()
+    for n, maps in results.items():
+        for m in maps:
+            if m.canonical == "order_id":
+                vs = [v for v in raw[n].get(m.column, []) if v is not None and str(v).strip()]
+                ids.update(fold(str(v)).strip() for v in vs)
+                shapes.update(_shape(v) for v in vs)
+    if len(ids) < 10:
+        return
+    for n, maps in results.items():
+        canons = {m.canonical for m in maps}
+        # biến thể: "Mã HĐ" bị LLM gán mã phiếu thu, "Ngày thu" gán ngày đơn (biz_209): ngày tên thu / trả / nộp / góp
+        # ở bảng không có dòng hàng, có cột mang mã đơn của bảng khác -> ngày trả
+        if "payment_date" not in canons and not canons & {"order_id", "product_name", "product_id", "qty", "qty_base",
+                                                          "line_amount", "purchase_id"}:
+            pay_day = [m for m in maps if m.canonical in ("order_date", "order_time") and m.source != "readme_col"
+                       and re.search(r"\b(thu|tra|nop|gop)\b", name_key(m.column))]
+            carrier = next((m for m in maps if m.canonical in (None, "payment_id")
+                            and (m.canonical is None or m.source == "llm")
+                            and (lambda vs: len(vs) >= 10 and (sum(fold(str(v)).strip() in ids for v in vs) >= 0.5 * len(vs) or sum(_shape(v) in shapes for v in vs) >= 0.9 * len(vs) and any(c.isalpha() for c in str(vs[0]))))(
+                                [v for v in raw[n].get(m.column, []) if v is not None and str(v).strip()])), None)
+            if pay_day and carrier:
+                for m in pay_day:
+                    m.canonical = "payment_date"
+                    m.note = (m.note + " | " if m.note else "") + "ngày thu / trả của sổ thu nợ"
+                canons = {m.canonical for m in maps}
+        if "payment_date" not in canons or canons & {"order_id", "product_name", "product_id", "qty", "qty_base",
+                                                      "line_amount", "order_date", "purchase_id"}:
+            continue
+        for m in maps:
+            if m.canonical is not None and not (m.canonical == "payment_id" and m.source == "llm"):
+                continue
+            vs = [v for v in raw[n].get(m.column, []) if v is not None and str(v).strip()]
+            if len(vs) < 10 or not all(isinstance(v, str) for v in vs):
+                continue
+            hit = sum(fold(v).strip() in ids for v in vs) / len(vs)
+            same = sum(_shape(v) in shapes for v in vs) / len(vs)
+            if hit >= 0.5 or same >= 0.9 and re.search(r"[A-Za-z]", vs[0]):
+                m.canonical, m.source = "order_id", m.source or "value_pattern"
+                m.note = (m.note + " | " if m.note else "") + f"giá trị là mã đơn bảng khác (trùng {hit:.0%}, cùng dạng {same:.0%})"
+                if "payment_amount" not in canons:
+                    for x in maps:
+                        if x.canonical in ("order_total", "money") and x.source != "readme_col":
+                            x.canonical = "payment_amount"
+                            x.note = (x.note + " | " if x.note else "") + "tiền của sổ thu nợ: tiền trả lần đó"
+                            break
+                break
 
 
 def cross_table_names(results: dict[str, list[ColumnMap]], kinds: dict[str, dict], raw: dict[str, dict]):
@@ -549,6 +717,31 @@ def _resolve_context(maps: list[ColumnMap]):
             # trạng thái thanh toán / hoá đơn điện tử / khách: không phải trạng thái đơn.
             # Không dùng "TT" (thanh toán / trạng thái / thành tiền đều viết TT); giá trị là trạng thái đơn thì tin giá trị
             m.canonical, m.note = None, "trạng thái không phải của đơn (theo tên cột)"
+    # phiếu thu ghi cả "Mã phiếu" lẫn "Mã đơn" (có ngày thu): "Mã phiếu" là mã phiếu thu. Từ điển train có "Mã phiếu" = mã đơn
+    # (phiếu dịch vụ tiệm sửa) nên hai cột cùng thành order_id và cột "Mã đơn" thật bị bỏ khi khử trùng
+    orders = [m for m in maps if m.canonical == "order_id"]
+    if len(orders) >= 2 and any(name_key(m.column) == "ma don" for m in orders) \
+            and any(m.canonical == "payment_date" for m in maps):
+        for m in orders:
+            if m.source != "readme_col" and re.fullmatch(r"ma phieu|so phieu", name_key(m.column)):
+                m.canonical, m.note = "payment_id", "mã phiếu thu (bảng có cả mã đơn và ngày thu)"
+
+    # NV3: Bảng phiếu thu không có cột mã phiếu. Tắt mặc định (bật DATAMATE_NV3=1): FX3e biz_205 lật 3 câu
+    if maps and os.environ.get("DATAMATE_NV3") and re.search(r"\bphieu ?thu\b|\bthu ?tien\b|\bpayments?\b|\breceipts?\b", name_key(maps[0].table or "")):
+        canons = {m.canonical for m in maps}
+        if "order_id" in canons \
+                and (canons & {"money", "order_total", "payment_amount"}) \
+                and (canons & {"order_date", "order_time", "payment_date"}) \
+                and not (canons & {"product_id", "product_name", "qty", "qty_base", "unit_price", "line_amount"}):
+            for m in maps:
+                if m.source != "readme_col":
+                    if m.canonical in ("order_date", "order_time"):
+                        m.canonical = "payment_date"
+                        m.note = "phiếu thu (theo tên bảng)"
+                    elif m.canonical in ("money", "order_total"):
+                        m.canonical = "payment_amount"
+                        m.note = "phiếu thu (theo tên bảng)"
+
     # lượt 2: ngữ cảnh bảng. Bảng dòng hàng = có số lượng / đơn giá / thành tiền, hoặc có hàng + đơn / ngày
     present = {m.canonical for m in maps}
     items = present & {"product_id", "product_name", "qty", "qty_base", "unit_price"}
@@ -826,6 +1019,45 @@ def _resolve_llm_duplicates(props: list[tuple[ColumnMap, str]], t: TableInput) -
     return out
 
 
+HDR = os.environ.get("DATAMATE_HDR", "1") != "0"
+
+
+def _header_ok(t: TableInput, maps: list[ColumnMap], cand: list[tuple[ColumnMap, str]]) -> bool:
+    """Sổ đầu đơn (mỗi dòng một đơn: mã đơn + ngày đặt, dòng hàng ở bảng khác): mã đơn gần như không lặp."""
+    col = next((m.column for m, c in cand if c == "order_id"), None) or next(
+        (m.column for m in maps if m.canonical == "order_id"), None)
+    # ngày đặt có thể đã do luật tên gán từ trước (nằm trong maps, không trong cand)
+    if not col or not (any(c == "order_date" for _, c in cand) or any(m.canonical == "order_date" for m in maps)):
+        return False
+    vals = [fold(str(v)) for v in t.raw.get(col, []) if v is not None and str(v).strip()]
+    return len(vals) >= 20 and len(set(vals)) >= 0.9 * len(vals)
+
+
+def link_line_ids(tables: list[TableInput], results: dict[str, list[ColumnMap]]) -> None:
+    """HDR: mã phiếu LLM gán purchase_id mà giá trị nằm trong mã đơn của bảng khác (chi tiết của sổ đầu đơn,
+    nối qua mã phiếu) và không nằm trong mã phiếu nhập nào -> order_id."""
+    if not HDR:
+        return
+    raw = {t.name: t.raw for t in tables}
+
+    def vals(name, canon):
+        return {fold(str(v)) for m in results[name] if m.canonical == canon
+                for v in raw[name].get(m.column, []) if v is not None and str(v).strip()}
+    orders = {n: vals(n, "order_id") for n in results}
+    buys = {n: vals(n, "purchase_id") for n in results}
+    for n, maps in results.items():
+        if "order_id" in {m.canonical for m in maps}:
+            continue
+        for m in maps:
+            if m.canonical != "purchase_id" or m.source != "llm":
+                continue
+            mine = buys[n]
+            if len(mine) < 20 or any(len(mine & b) for k, b in buys.items() if k != n):
+                continue
+            if any(k != n and len(mine & o) >= 0.9 * len(mine) for k, o in orders.items()):
+                m.canonical, m.note = "order_id", m.note + " | mã nằm trong mã đơn bảng khác (HDR)"
+
+
 def _llm_pass(tables: list[TableInput], results: dict[str, list[ColumnMap]], units: set[str]):
     """Lượt cuối: cột luật để trống (không có bằng chứng, hoặc README mô tả mà chưa có luật) -> LLM.
     Chỉ nhận tên có trong schema, đúng kiểu và giá trị, chưa có trong bảng, không đưa bảng sang thực thể
@@ -864,7 +1096,9 @@ def _llm_pass(tables: list[TableInput], results: dict[str, list[ColumnMap]], uni
                     m.canonical = "unit"
                     used = (used - {"base_unit"}) | {"unit"}
         r0 = table_role(used)
-        _llm_family(props, used, _ROLE_GROUP.get(r0) == "ban")
+        # HDR: bảng có mã đơn nhưng luật đoán là khách / chưa rõ (sổ đầu đơn chưa có ngày) vẫn là bảng nhóm bán
+        hdr_sales = HDR and r0 in ("customers", "other") and "order_id" in used | {c for _, c in props}
+        _llm_family(props, used, _ROLE_GROUP.get(r0) == "ban" or hdr_sales)
         _resolve_qty_pair(props, t)
         props = _resolve_llm_duplicates(props, t)
         cand, seen = [], set(used)
@@ -874,7 +1108,8 @@ def _llm_pass(tables: list[TableInput], results: dict[str, list[ColumnMap]], uni
                 seen.add(c)
         # xét vai trò trên CẢ bộ cột đề xuất (bảng bán đổi hết tên cột chỉ đủ dấu hiệu khi gộp lại);
         # không được thì nhận từng cột không làm đổi vai trò bảng
-        whole = _role_change_ok(r0, table_role(seen), seen, t.name)
+        whole = _role_change_ok(r0, table_role(seen), seen, t.name) or (
+            hdr_sales and table_role(seen) == "orders" and _header_ok(t, maps, cand))
         for m, c in cand:
             if whole or _role_change_ok(r0, table_role(used | {c}), used | {c}, t.name):
                 m.canonical, m.source = c, "llm"

@@ -57,3 +57,13 @@ def test_thieu_bang_meta(tmp_path):
     con.close()
     assert not ShopContext(p).sales_known()
     assert not ShopContext(p).columns_described()
+
+
+def test_hai_duong_cung_noi_khong_ghi_thi_khong_tra_loi_duoc(tmp_path):
+    from datamate.query.compose import final_record
+    r = both({"loai": "llm_khong_co"}, {"loai": "llm_khong_co"}, False, cautious=True)
+    assert r["loai"] == "khong_ghi"
+    ctx = _ctx(tmp_path, None, None, described=False)              # guard không chặn kết luận này
+    assert final_record("q", guard_unanswerable(ctx, r)) == {"id": "q", "type": "unanswerable"}
+    one = both({"loai": "llm_khong_co"}, {"loai": "loi"}, False)
+    assert final_record("q", one) == {"id": "q", "type": "abstain"}  # một đường thì vẫn bỏ trống

@@ -16,6 +16,41 @@ from .parsers import fold
 ENABLED = False
 UNKNOWN = "khong_ro"
 MAX_VALUES = 60
+RULE_LINES: list[str] = []      # dòng luật của bộ đề (build_shop đặt); nhãn được luật nhắc tới thì gửi kèm dòng đó
+
+
+def set_rules(texts) -> None:
+    """Tách rulebook thành dòng / ô bảng để tìm dòng nhắc tới một nhãn."""
+    out = []
+    for t in texts or []:
+        for line in str(t).splitlines():
+            for cell in (line.split("|") if line.count("|") >= 2 else [line]):
+                cell = cell.strip(" -*")
+                if len(cell) >= 8:
+                    out.append(cell)
+    RULE_LINES[:] = out
+
+
+def _label_key(v: str) -> str:
+    """Phần chính của nhãn để dò trong luật: bỏ ngoặc, số, dấu câu; ít nhất 2 chữ."""
+    v = re.sub(r"\(.*?\)|\[.*?\]", " ", str(v))
+    v = re.sub(r"[^\w]+|\d+", " ", fold(v)).strip()
+    return v if len(v.split()) >= 2 else ""
+
+
+def rules_for(values) -> list[str]:
+    """Các dòng luật (tối đa 6, mỗi dòng ≤ 300 ký tự) có chứa phần chính của một nhãn."""
+    keys = {k for k in (_label_key(v) for v in values) if k}
+    if not keys or not RULE_LINES:
+        return []
+    hits = []
+    for line in RULE_LINES:
+        f = " " + re.sub(r"[^\w]+", " ", fold(line)) + " "
+        if any(f" {k} " in f for k in keys) and line[:300] not in hits:
+            hits.append(line[:300])
+        if len(hits) >= 6:
+            break
+    return hits
 
 _STATUS = {
     "hoan_thanh": "đơn đã xong: đã giao, khách đã nhận, đã thanh toán, đã chốt xong",
@@ -82,7 +117,10 @@ def label_prompt(kind: str, counts: dict[str, int], column: str = "") -> tuple[s
     top = sorted(counts.items(), key=lambda x: -x[1])[:MAX_VALUES]
     user = "\n".join([f"Cột: {column}" if column else "Cột nhãn",
                       "Mã:", *[f"- {c}: {d}" for c, d in codes.items()],
-                      "Nhãn (số dòng):", *[f'- "{v}" ({n})' for v, n in top]])
+                      "Nhãn (số dòng):", *[f'- "{v}" ({n})' for v, n in top]]
+                     + (["LUẬT CỦA CỬA HÀNG có nhắc tới nhãn (luật nói nghĩa của nhãn thì theo luật; luật nói nhãn đó "
+                         "không phải bán / trả / huỷ thì không xếp vào mã ấy):", *[f"- {r}" for r in rl]]
+                        if (rl := rules_for([v for v, _ in top])) else []))
     return _SYSTEM, user, top
 
 

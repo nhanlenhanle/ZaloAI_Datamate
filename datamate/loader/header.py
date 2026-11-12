@@ -22,13 +22,19 @@ from dataclasses import dataclass, field
 from .read_files import RawSheet
 
 SCAN_ROWS = 30
+# Sổ gõ không dấu ("Tong cong", "Cong thang 9"): chữ không dấu đứng một mình ("Tong", "Cong") có thể là tên người, nên
+# dạng không dấu phải có từ thứ hai hoặc có số / ngày đi kèm.
 SUMMARY_RE = re.compile(
-    r"^(tổng|cộng|total|subtotal)"
+    r"^(?:(tổng|cộng|total|subtotal)"
     r"(\s+(cộng|ngày|tháng|năm|quý|tuần|kỳ|ca))?"
-    r"[\s:]*[\d/.\-\s]*$",
+    r"[\s:]*[\d/.\-\s]*"
+    r"|(tong|cong)\s+(cong|ngay|thang|nam|quy|tuan|ky|ca)[\s:]*[\d/.\-\s]*"
+    r"|(tong|cong)[\s:]*\d[\d/.\-\s]*)$",
     re.IGNORECASE,
 )
 NOTE_RE = re.compile(r"^(ghi chú|lưu ý|chú thích|note)\s*:", re.IGNORECASE)
+# nhãn dòng tổng có số ("Tổng tiền tháng 3", "TC 03/2025"): chỉ nhận khi mở đầu bằng chữ kiểu tổng (lớp số vẫn phải khớp)
+_TOTAL_WORD = re.compile(r"^(tổng|tong|tông|cộng|cong|t\.?\s?c\.?\b|tc\b|sum|total|subtotal|∑)")
 
 
 @dataclass
@@ -136,8 +142,14 @@ def _drop_unlabeled_totals(data: list, src: list, dropped: list, max_tail: int =
     median = filled[len(filled) // 2]
     for _ in range(max_tail):
         row, body = data[-1], data[:-1]
-        cells = [(j, parse_number(c)) for j, c in enumerate(row) if c is not None]
-        if not cells or len(cells) > max(1, median // 2) or any(v is None for _, v in cells):
+        filled_cells = [(j, c) for j, c in enumerate(row) if c is not None and str(c).strip() != ""]
+        cells = [(j, parse_number(c)) for j, c in filled_cells]
+        # ô chữ (nhãn "Tong cong", "Sum", "Cộng tiền"... ghi kiểu gì cũng được) không làm hỏng phép kiểm: bằng chứng là
+        # các ô SỐ đều bằng tổng cột phía trên. Nhãn chỉ được là chữ ngắn, không phải số / ngày.
+        labels = [c for (j, c), (_, v) in zip(filled_cells, cells) if v is None]
+        cells = [(j, v) for j, v in cells if v is not None]
+        if not cells or len(filled_cells) > max(1, median // 2) or len(labels) > 1                 or any(not isinstance(c, str) or len(c) > 40 or re.search(r"\d", c) and not _TOTAL_WORD.match(c.strip().lower())
+                       for c in labels):
             return
         ok = 0
         for j, v in cells:

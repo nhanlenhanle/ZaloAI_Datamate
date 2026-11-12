@@ -16,6 +16,7 @@ import duckdb
 from datamate.llm_query import rulebook_text
 from datamate.loader import llm
 from datamate.loader.parsers import fold
+from datamate.query.telex import sua_cau, sua_q
 from datamate.query.evaluate import HOLDOUT
 from datamate.query.facts import AT_DATE, BY_RANGE, FIELDS, MONEY, Facts, NoSource
 from datamate.query.plan import MissingData, PlanError, Runner, _is_part, _product_index, _q, resolve_period, to_record
@@ -181,7 +182,7 @@ _NUM = re.compile(r"\d[\d.,/:-]*")
 
 def mask(question: str, names: list[str] | None = None) -> set[str]:
     """Khung câu: bỏ dấu, che tên trong kế hoạch, che số; trả tập từ và cặp từ."""
-    q = f" {text_key(question)} "
+    q = f" {text_key(sua_cau(question))} "
     for n in sorted(names or [], key=len, reverse=True):
         k = text_key(n)
         if k:
@@ -635,6 +636,10 @@ _ASKS_STATUS = re.compile(r"huy|\bbom\b|tra hang|tra lai|hoan tra|hoan hang|khon
 _ASKS_RX = re.compile(r"ke don|theo don|khong can don")
 _ASKS_DATE = re.compile(r"\b(ngayf?|hom|tuan|thangs?|quy|nam) naof?\b|\bkhi nao\b|\bbao gio\b|\bhan dung\b|\bhet han\b|\b(ngay|thang) may\b"
                         r"|\blan (cuoi|dau|gan)\b|\bngay (ban|mua|nhap|gan)")
+# câu hỏi một ngày ("ngày nào", "ngày naoo / mô", "ngày đông khách nhất"): đáp án là ngày. Trên đáp án thật mẫu này chỉ bắt
+# câu có đáp án là ngày (train, gen_hl, hard thiết kế)
+ASKS_DAY = re.compile(r"\b(?:ngay|hom)\s+(?:nao+|mo|may)\b|\bkhi nao\b|\bbao gio\b|^\s*ngay\s+(?:dong|dat|vang|nhieu|it|ban)\b[^?]*\bnhat\b"
+                      r"|\bngay\s+(?:dong|dat|vang)\s+khach\s+nhat\b")
 _ASKS_COUNT = re.compile(r"\b(bao nhieu|bao nhiu|bnhiu|bn|may|so)\b")
 _ASKS_NAMES = re.compile(r"\b(nhung|liet ke|la gi|nao|top|danh sach|cac|ke ten)\b")
 _IS_DATE = re.compile(r"\d{4}-\d{2}(-\d{2})?")
@@ -753,6 +758,8 @@ def _mismatch(plan, v, question: str) -> str | None:
             return "hai vế của phép ghép giống hệt nhau: vế đầu phải có điều kiện câu hỏi nêu"
     if asks_yes_no(question) and not isinstance(v, bool):
         return "câu hỏi có / không: kết quả phải là đúng / sai (so sánh bằng lon_hon, tang_lien_tuc...), không phải giá trị"
+    if ASKS_DAY.search(f) and isinstance(v, (int, float)) and not isinstance(v, bool):
+        return 'câu hỏi ngày nào: kết quả là ngày ("nhom": "ngay", xếp rồi lấy tên), không phải con số'
     # câu hỏi đúng một tháng M/Y mà kế hoạch tính cả năm: kỳ phải là tháng đó
     months = set(_ONE_MONTH.findall(f))
     kinds = {k.get("loai") for k in _periods(plan)}
@@ -771,7 +778,7 @@ def _mismatch(plan, v, question: str) -> str | None:
                 return "câu không hỏi theo trạng thái đơn: bỏ lọc trang_thai"
     if "hoat chat" in f and not any(isinstance(c, dict) and c.get("cot") == "hoat_chat" for p in leaves for c in p.get("loc") or []):
         return "câu hỏi theo hoạt chất: phải lọc cột hoat_chat"
-    if isinstance(v, str) and _IS_DATE.fullmatch(v) and not _ASKS_DATE.search(f):
+    if isinstance(v, str) and _IS_DATE.fullmatch(v) and not (_ASKS_DATE.search(f) or ASKS_DAY.search(f)):
         return "câu không hỏi ngày nào: trả thẳng con số câu hỏi cần, không dùng nhom và xep"
     if isinstance(v, list) and v and isinstance(v[0], dict) and _ASKS_COUNT.search(f) and not _ASKS_NAMES.search(f):
         return "câu hỏi số lượng, không hỏi danh sách tên"
@@ -828,6 +835,7 @@ def solve(ctx: ShopContext, q: dict, bank: ExampleBank, skip_shop=None, skip_kin
     """Một câu -> {'value', 'want', 'loai': tra_loi|ngoai_ky|thieu_nguon|llm_khong_co|khong_dong_thuan|loi, 'plans', ...}.
     Hỏi tối đa 3 lần, mỗi lần sai cú pháp được cho xem lỗi để viết lại một lần; chỉ nhận khi 2 lần ra CÙNG kết quả chạy.
     Quyết định nộp hay bỏ trống do bước sau."""
+    q = sua_q(q)
     today = dt.date.fromisoformat(q["as_of_date"])
     ex = bank.pick(q["question"], ctx.names_in(q["question"]), skip_shop=skip_shop, skip_kinds=skip_kinds, skip_id=q["id"],
                    skip_shops=skip_shops)
@@ -867,7 +875,8 @@ def final_record(qid: str, r: dict) -> dict:
             return to_record(qid, r["value"], r["want"])
         except PlanError:       # giá trị không nộp được (đối tượng không tên, NaN): bỏ trống, không nộp bậy
             return {"id": qid, "type": "abstain"}
-    return {"id": qid, "type": "unanswerable" if r["loai"] in UNANSWERABLE else "abstain"}
+    # khong_ghi (hybrid.both): hai đường cùng kết luận shop không ghi thông tin đó; không qua guard_unanswerable
+    return {"id": qid, "type": "unanswerable" if r["loai"] in UNANSWERABLE or r["loai"] == "khong_ghi" else "abstain"}
 
 
 # Dạng đáp án theo câu hỏi (§9: bảng chỉ khi câu bảo lập bảng / hỏi nhiều đối tượng kèm số đo). Trên đáp án thật: câu

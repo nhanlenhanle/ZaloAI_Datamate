@@ -20,6 +20,7 @@ import math
 import duckdb
 
 from datamate.loader.parsers import fold
+from datamate.query import alias
 from datamate.query.facts import AT_DATE, BY_RANGE, FIELDS, HAS_VALID, MONEY, Facts, NoSource
 from datamate.tests.verify_answers import (_cols, _month_end, _no_year, _tables, customer_ids_by_name, names_by_id,
                                            text_key)
@@ -427,6 +428,16 @@ class Runner:
             # phép tính trên số: vế xếp hạng lấy 1 đối tượng là lấy số đo của đối tượng đó (vd ngày cao nhất trừ ngày thấp nhất)
             parts = [{**p, "cot_ra": "gia_tri"} if isinstance(p, dict) and p.get("nhom") and not p.get("cot_ra")
                      and (p.get("xep") or {}).get("lay") == 1 else p for p in parts]
+        if kind == "danh_sach" and len(parts) >= 2 and all(isinstance(p, dict) and p.get("nhom") and "ghep" not in p for p in parts)                 and len({p["nhom"] for p in parts}) == 1 and not any((p.get("xep") or {}).get("lay") for p in parts)                 and all(p.get("cot_ra") in (None, "ten", "ca_hai") for p in parts):
+            # nhiều số đo theo cùng một đối tượng ("doanh thu và số đơn của từng nhân viên"): một bảng, mỗi số đo một cột.
+            # Từng vế chạy riêng thì chỉ ra danh sách tên, mất số (không kế hoạch train nào có dạng này)
+            cols = [self.run({**p, "cot_ra": "ca_hai"})["bang"] for p in parts]
+            keys = {}
+            for i, rows in enumerate(cols):
+                for obj, v in rows:
+                    k = json.dumps(obj, sort_keys=True, ensure_ascii=False, default=str)
+                    keys.setdefault(k, [obj] + [None] * len(cols))[1 + i] = v
+            return {"bang": list(keys.values())}
         vals = [self.run(p) for p in parts]
         if kind == "danh_sach":
             return vals[0] if len(vals) == 1 else vals
@@ -488,8 +499,10 @@ class Runner:
             pass
         return "ngay_don" if "ngay_don" in cols else None
 
-    def _raw_cond(self, cols: set[str], f: dict) -> str:
+    def _raw_cond(self, cols: set[str], f: dict, table: str = "") -> str:
         col, op, val = f.get("cot"), f.get("op", "="), f.get("gt")
+        if col not in cols and (alt := alias.resolve(self.con, table, col, cols)):
+            col = f["cot"] = alt          # tên cột gốc (README) -> tên trong DB
         if col not in cols:
             raise PlanError(f"bảng không có cột {col}; các cột có: {', '.join(sorted(cols))[:400]}")
         c = f'"{col}"'
@@ -522,12 +535,14 @@ class Runner:
         where: list[str] = []
         if plan.get("ky"):
             c = plan.get("cot_ngay") or self._date_col(fact, cols)
+            if c not in cols and (alt := alias.resolve(self.con, fact, c, cols)):
+                c = plan["cot_ngay"] = alt
             if c not in cols:
                 raise PlanError(f"bảng {fact} cần \"cot_ngay\" là cột ngày để lọc kỳ; các cột có: {', '.join(sorted(cols))[:400]}")
             a, b = resolve_period(plan["ky"], self.today, self.con)
             where.append(f'TRY_CAST("{c}" AS DATE) BETWEEN DATE {_q(a)} AND DATE {_q(b)}')
         for f in plan.get("loc") or []:
-            where.append(self._raw_cond(cols, f))
+            where.append(self._raw_cond(cols, f, fact))
         return fact, table, where
 
     def _source(self, plan: dict) -> tuple[str, str, list[str]]:
@@ -577,6 +592,8 @@ class Runner:
         op, col = plan.get("phep"), plan.get("cot")
         if op in ("tong", "tb", "min", "max", "dem_khac", "gia_duy_nhat", "chan_le"):
             fields = self._fields(fact, table)
+            if col not in fields and fact not in FIELDS and (alt := alias.resolve(self.con, fact, col, fields)):
+                col = plan["cot"] = alt
             if col not in fields:
                 raise PlanError(f"bảng {fact} không có cột {col}; các cột có: {', '.join(sorted(fields))[:400]}")
             self._require(table, "gia_von" if col == "lai" else col, plan)
@@ -668,6 +685,9 @@ class Runner:
                 names += [n for n, in self.con.execute(f'SELECT DISTINCT ten_khach FROM "{table}" WHERE khach = ? '
                                                        f'AND ten_khach IS NOT NULL', [key]).fetchall()]
             names += names_by_id(self.con, "customers", "customer_id", "customer_name", key)
+        elif group in ("kenh", "thanh_toan"):
+            names += [self.facts.code_labels().get(str(key))]
+            names.append(key)
         elif group == "nhan_vien":
             names.append(key)
             names += names_by_id(self.con, "staff", "staff_id", "staff_name", key)
@@ -678,6 +698,8 @@ class Runner:
     def _grouped(self, plan: dict, fact: str, table: str, where: str):
         g = plan["nhom"]
         fields = self._fields(fact, table)
+        if g not in fields and fact not in FIELDS and (alt := alias.resolve(self.con, fact, g, fields)):
+            g = plan["nhom"] = alt
         if g not in fields:
             raise PlanError(f"bảng {fact} không có cột nhóm {g}; các cột có: {', '.join(sorted(fields))[:400]}")
         self._require(table, g, plan)
@@ -723,7 +745,7 @@ class Runner:
         items = []
         for k, _ in rows:
             kv = key_val(k)
-            items.append(kv if kv is not None else (str(k) if g in ("thang", "ca", "kenh") else self._names(g, k, table)))
+            items.append(kv if kv is not None else (str(k) if g in ("thang", "ca") else self._names(g, k, table)))
         return items[0] if lim == 1 else items
 
     def _having(self, plan: dict, expr: str, table: str, where: str) -> str:
@@ -826,8 +848,9 @@ def to_record(qid: str, value, want: str | None = None) -> dict:
         for x in value:
             number(x)
     if isinstance(value, dict) and "bang" in value:
-        rows = [[name(a) if isinstance(a, dict) else a, b] for a, b in value["bang"]]
-        return {"id": qid, "type": "table", "answer": {"columns": ["doi_tuong", "gia_tri"], "rows": rows}}
+        rows = [[name(r[0]) if isinstance(r[0], dict) else r[0], *r[1:]] for r in value["bang"]]
+        cols = ["doi_tuong"] + (["gia_tri"] if all(len(r) == 2 for r in rows) else [f"gia_tri_{i}" for i in range(1, len(rows[0]))] if rows else [])
+        return {"id": qid, "type": "table", "answer": {"columns": cols, "rows": rows}}
     if isinstance(value, dict):
         return {"id": qid, "type": "string", "answer": name(value)}
     if isinstance(value, list):
