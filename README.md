@@ -77,24 +77,53 @@ Toàn bộ mô hình sử dụng trong inference đều là mã nguồn mở gi�
 
 ## 5. Run Instructions (Hướng dẫn chạy chấm bài)
 
-**Docker image** (đã đóng gói sẵn code + trọng số mô hình): [Tải từ Google Drive](https://drive.google.com/file/d/1TbEGKDA55_Z6gLgIwTfZStheVROH7ItT/view?usp=sharing)
+Làm theo *Docker Submission Guide – Zalo AI Challenge 2026 DataMate* (mục 10–11).
 
-Sau khi tải về, nạp image vào Docker:
+### 5.1. Yêu cầu máy chạy
+
+| Thành phần | Yêu cầu |
+| :--- | :--- |
+| GPU | 2 × NVIDIA RTX 5090 (32 GB VRAM mỗi card), driver R570 trở lên |
+| Phần mềm | Docker (đã bật BuildKit) + NVIDIA Container Toolkit |
+| Kiến trúc image | `linux/amd64`, base `vllm/vllm-openai:v0.17.0` (có hỗ trợ Blackwell / compute capability 12.0) |
+| Mạng | Không cần. Image chạy **100% offline** (`HF_HUB_OFFLINE=1`, `TRANSFORMERS_OFFLINE=1`) |
+| Bộ nhớ chia sẻ | `--shm-size=16g` (mặc định 64 MiB không đủ cho NCCL) |
+| Ổ đĩa | Đủ chỗ cho file `.tar.gz` và image sau khi `docker load` |
+
+### 5.2. Tải và nạp image
+
+**Docker image** (đã đóng gói sẵn code, trọng số mô hình, mã và dữ liệu huấn luyện): [Tải từ Google Drive](https://drive.google.com/file/d/1TbEGKDA55_Z6gLgIwTfZStheVROH7ItT/view?usp=sharing)
+
+File tải về là `zaic2026_datamate_fall_to_fly.tar.gz`, được tạo bằng `docker save zaic2026_datamate_fall_to_fly:final | gzip`.
 
 ```bash
-docker load -i <file_image_vua_tai>
+# (Tuỳ chọn) Kiểm tra file nguyên vẹn nếu có kèm file .md5; kết quả phải là OK
+md5sum -c zaic2026_datamate_fall_to_fly.tar.gz.md5
+
+# Nạp image (docker load đọc trực tiếp file .tar.gz)
+docker load -i zaic2026_datamate_fall_to_fly.tar.gz
+
+# Kiểm tra image: kết quả phải là linux/amd64
+docker image inspect -f '{{.Os}}/{{.Architecture}} {{.Size}}' zaic2026_datamate_fall_to_fly:final
+
+# Xem cấu trúc thư mục /code trong image
+docker run --rm --network none --entrypoint ""   zaic2026_datamate_fall_to_fly:final find /code -maxdepth 2
 ```
 
-Chạy bằng đúng lệnh chấm tiêu chuẩn của BTC (Mục 10 Docker Submission Guide):
+### 5.3. Chạy chấm bài
+
+Dùng đúng lệnh chấm chuẩn của BTC (Mục 10 của Docker Submission Guide): 2 GPU, không mạng, `/data` chỉ đọc, 16 GiB shared memory.
 
 ```bash
-docker run --rm --gpus '"device=0,1"' --network none --shm-size=16g \
-  --entrypoint bash \
-  -v /path/to/test_split:/data:ro \
-  -v /path/to/output:/result \
-  zaic2026_datamate_fall_to_fly:final /code/predict.sh
+docker run --rm --gpus '"device=0,1"' --network none --shm-size=16g   --entrypoint bash   -v /path/to/test_split:/data:ro   -v /path/to/output:/result   zaic2026_datamate_fall_to_fly:final /code/predict.sh
 ```
 
-Đầu ra tự động được ghi tại:
-- `/result/submission.jsonl`: Kết quả dự đoán cho toàn bộ câu hỏi trong `/data/questions.jsonl`.
-- `/result/logs/logs.jsonl`: Bản ghi log chi tiết từng câu hỏi (`id`, `answer`, `elapsed_ms`, `thinking`, `code`, `output`).
+- `/path/to/test_split` là thư mục test theo đúng cấu trúc BTC: `data/<business_id>/`, `rulebook.md`, `calendar.csv`, `questions.jsonl`.
+- `/code/predict.sh` chạy không cần tham số. Mọi thiết lập (mô hình, `seed=2026`, `temperature`, batch...) đã được cố định sẵn, không cần chỉnh.
+- File tạm được ghi vào `/tmp` trong container, không ghi vào `/data`.
+
+### 5.4. Kết quả đầu ra
+
+Thư mục `/result` (tự tạo nếu chưa có) chứa:
+- `/result/submission.jsonl`: mỗi dòng là một câu trả lời (`id`, `type`, `answer`) cho từng câu trong `/data/questions.jsonl`. Câu nào xong là ghi ngay, nên nếu bị dừng giữa chừng thì các câu đã ghi vẫn được tính.
+- `/result/logs/logs.jsonl`: mỗi câu hỏi một bản ghi gồm `id`, `answer`, `elapsed_ms`, `thinking` (nguyên văn reasoning của mô hình, theo thứ tự các lần gọi), `code` và `output` (truy vấn JSON Plan / DuckDB SQL đã thực thi cùng kết quả).
