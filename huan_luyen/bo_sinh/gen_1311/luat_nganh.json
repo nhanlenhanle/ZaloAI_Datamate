@@ -1,0 +1,148 @@
+[
+ {
+  "nganh": "nha_thuoc",
+  "kieu": "rx_lo",
+  "layout": "csv_tach",
+  "giau": true,
+  "tang_ho": {
+   "vet": 7,
+   "coc": 7,
+   "debt": 2,
+   "sua_xe": 6,
+   "dien_thoai": 6,
+   "diem": 7
+  }
+ },
+ {
+  "nganh": "nha_thuoc",
+  "kieu": "rx_lo",
+  "layout": "excel_thang",
+  "giau": true,
+  "tang_ho": {
+   "vet": 7,
+   "coc": 7,
+   "debt": 2,
+   "sua_xe": 6,
+   "dien_thoai": 6,
+   "diem": 7
+  }
+ },
+ {
+  "nganh": "nha_thuoc",
+  "kieu": "rx_lo",
+  "layout": "phang",
+  "giau": true,
+  "tang_ho": {
+   "vet": 7,
+   "coc": 7,
+   "debt": 2,
+   "sua_xe": 6,
+   "dien_thoai": 6,
+   "diem": 7
+  }
+ },
+ {
+  "nganh": "tiem_may",
+  "kieu": "coc",
+  "layout": "xlsx_nhieu_file",
+  "giau": false,
+  "tang_ho": {
+   "vet": 7,
+   "coc": 7,
+   "debt": 2,
+   "sua_xe": 6,
+   "dien_thoai": 6,
+   "diem": 7
+  }
+ },
+ {
+  "nganh": "banh_kem",
+  "kieu": "coc",
+  "layout": "",
+  "giau": false,
+  "tang_ho": {
+   "vet": 7,
+   "coc": 7,
+   "debt": 2,
+   "sua_xe": 6,
+   "dien_thoai": 6,
+   "diem": 7
+  }
+ },
+ {
+  "nganh": "sua_xe_may",
+  "kieu": "sua_xe",
+  "layout": "xlsx_nhieu_file",
+  "giau": true,
+  "tang_ho": {
+   "vet": 7,
+   "coc": 7,
+   "debt": 2,
+   "sua_xe": 6,
+   "dien_thoai": 6,
+   "diem": 7
+  }
+ },
+ {
+  "nganh": "sua_xe_may",
+  "kieu": "sua_xe",
+  "layout": "sqlite",
+  "giau": true,
+  "tang_ho": {
+   "vet": 7,
+   "coc": 7,
+   "debt": 2,
+   "sua_xe": 6,
+   "dien_thoai": 6,
+   "diem": 7
+  }
+ },
+ {
+  "nganh": "dien_thoai_may",
+  "kieu": "dien_thoai",
+  "layout": "sqlite",
+  "giau": true,
+  "tang_ho": {
+   "vet": 7,
+   "coc": 7,
+   "debt": 2,
+   "sua_xe": 6,
+   "dien_thoai": 6,
+   "diem": 7
+  }
+ },
+ {
+  "nganh": "me_be",
+  "kieu": "diem",
+  "layout": "phang",
+  "giau": true,
+  "tang_ho": {
+   "vet": 7,
+   "coc": 7,
+   "debt": 2,
+   "sua_xe": 6,
+   "dien_thoai": 6,
+   "diem": 7
+  }
+ },
+ {
+  "nganh": "tram_sac",
+  "kieu": "sac"
+ },
+ {
+  "nganh": "tram_sac",
+  "kieu": "sac"
+ },
+ {
+  "nganh": "thue_do_cuoi",
+  "kieu": "thue"
+ },
+ {
+  "nganh": "thue_xe_may",
+  "kieu": "thue"
+ },
+ {
+  "nganh": "thue_cam_trai",
+  "kieu": "thue"
+ }
+]

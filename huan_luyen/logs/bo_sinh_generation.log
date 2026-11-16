@@ -1,0 +1,4 @@
+[2026-11-13 10:15:02] Running bo_sinh/sinh.py --n 76 --seed 7 --start 301 --loi-giai -> gen_train (76 shops, 3561 verified JSON/SQL pairs, pass rate 97.4%)
+[2026-11-13 11:04:18] Running bo_sinh/sinh.py --n 36 --seed 19 --start 501 --layout-public --van-public --cau-lech --loi-giai -> bo_tu_sinh_v2 (36 shops, 2473 questions, 1303 verified SQL pairs)
+[2026-11-13 12:20:44] Running qwen9b/make_plan_data.py & make_sql_data.py -> thu_train.jsonl (800), thu_val.jsonl (40), mix_train.jsonl (2200)
+[2026-11-15 16:10:09] Running qwen4b_norm/build_norm_v2_dataset_ptv2.py --cleaned -> full_gold_norm_v2_chatml_cleaned.jsonl (4669 train) + val_norm_v2.jsonl (100 val)

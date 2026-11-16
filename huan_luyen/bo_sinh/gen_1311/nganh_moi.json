@@ -1,0 +1,352 @@
+[
+ {
+  "nganh": "trung_gia_cam",
+  "kieu": "",
+  "layout": "sqlite",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ },
+ {
+  "nganh": "trung_gia_cam",
+  "kieu": "",
+  "layout": "csv_tach",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ },
+ {
+  "nganh": "trung_gia_cam",
+  "kieu": "",
+  "layout": "sqlite",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ },
+ {
+  "nganh": "gas_bep",
+  "kieu": "",
+  "layout": "phang",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ },
+ {
+  "nganh": "gas_bep",
+  "kieu": "",
+  "layout": "phang",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ },
+ {
+  "nganh": "gas_bep",
+  "kieu": "",
+  "layout": "phang",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ },
+ {
+  "nganh": "nuoc_da_binh",
+  "kieu": "",
+  "layout": "phang",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ },
+ {
+  "nganh": "nuoc_da_binh",
+  "kieu": "",
+  "layout": "phang",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ },
+ {
+  "nganh": "nuoc_da_binh",
+  "kieu": "",
+  "layout": "xlsx_nhieu_file",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ },
+ {
+  "nganh": "gach_op_lat",
+  "kieu": "",
+  "layout": "file_thang",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ },
+ {
+  "nganh": "gach_op_lat",
+  "kieu": "",
+  "layout": "phang",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ },
+ {
+  "nganh": "gach_op_lat",
+  "kieu": "",
+  "layout": "phang",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ },
+ {
+  "nganh": "dau_nhot",
+  "kieu": "",
+  "layout": "csv_tach",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ },
+ {
+  "nganh": "dau_nhot",
+  "kieu": "",
+  "layout": "file_thang",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ },
+ {
+  "nganh": "dau_nhot",
+  "kieu": "",
+  "layout": "excel_thang",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ },
+ {
+  "nganh": "vang_bac",
+  "kieu": "",
+  "layout": "csv_tach",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ },
+ {
+  "nganh": "vang_bac",
+  "kieu": "",
+  "layout": "csv_tach",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ },
+ {
+  "nganh": "do_nhua",
+  "kieu": "",
+  "layout": "file_thang",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ },
+ {
+  "nganh": "do_nhua",
+  "kieu": "",
+  "layout": "sqlite",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ },
+ {
+  "nganh": "nhom_kinh",
+  "kieu": "",
+  "layout": "excel_thang",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ },
+ {
+  "nganh": "nhom_kinh",
+  "kieu": "",
+  "layout": "file_thang",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ },
+ {
+  "nganh": "than_cui",
+  "kieu": "",
+  "layout": "phang",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ },
+ {
+  "nganh": "than_cui",
+  "kieu": "",
+  "layout": "sqlite",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ },
+ {
+  "nganh": "hoa_pham",
+  "kieu": "",
+  "layout": "phang",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ },
+ {
+  "nganh": "hoa_pham",
+  "kieu": "",
+  "layout": "csv_tach",
+  "tang_ho": {
+   "qty_item": 3,
+   "units": 3,
+   "top_item": 2,
+   "rev_item": 2,
+   "top_rev_group": 2,
+   "group": 1.5,
+   "hike": 1.5
+  }
+ }
+]

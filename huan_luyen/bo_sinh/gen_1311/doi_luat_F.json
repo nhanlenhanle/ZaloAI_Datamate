@@ -1,0 +1,32 @@
+[
+ {
+  "nganh": "the_thao",
+  "kieu": "",
+  "layout": "csv_tach",
+  "giau": true
+ },
+ {
+  "nganh": "vat_tu_y_te",
+  "kieu": "",
+  "layout": "xlsx_nhieu_file",
+  "giau": true
+ },
+ {
+  "nganh": "nuoc_giai_khat",
+  "kieu": "",
+  "layout": "phang",
+  "giau": true
+ },
+ {
+  "nganh": "sim_the",
+  "kieu": "",
+  "layout": "csv_tach",
+  "giau": true
+ },
+ {
+  "nganh": "my_pham",
+  "kieu": "",
+  "layout": "csv_tach",
+  "giau": true
+ }
+]

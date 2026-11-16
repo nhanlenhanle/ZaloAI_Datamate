@@ -1,0 +1,32 @@
+[
+ {
+  "nganh": "dien_nuoc",
+  "kieu": "",
+  "layout": "csv_tach",
+  "giau": true
+ },
+ {
+  "nganh": "linh_kien_pc",
+  "kieu": "",
+  "layout": "csv_tach",
+  "giau": true
+ },
+ {
+  "nganh": "dac_san",
+  "kieu": "",
+  "layout": "excel_thang",
+  "giau": true
+ },
+ {
+  "nganh": "thoi_trang",
+  "kieu": "",
+  "layout": "csv_tach",
+  "giau": true
+ },
+ {
+  "nganh": "thit_ca",
+  "kieu": "",
+  "layout": "sqlite",
+  "giau": true
+ }
+]

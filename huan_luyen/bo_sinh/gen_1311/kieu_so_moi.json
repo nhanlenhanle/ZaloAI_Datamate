@@ -1,0 +1,92 @@
+[
+ {
+  "nganh": "banh_mi",
+  "kieu": "",
+  "layout": "sqlite_pos",
+  "giau": true
+ },
+ {
+  "nganh": "my_pham",
+  "kieu": "",
+  "layout": "tron_nguon",
+  "giau": true
+ },
+ {
+  "nganh": "sua_xe_may",
+  "kieu": "sua_xe",
+  "layout": "so_chuyen_nganh",
+  "giau": true
+ },
+ {
+  "nganh": "dien_lanh",
+  "kieu": "",
+  "layout": "ghi_tay_so_phu",
+  "giau": true
+ },
+ {
+  "nganh": "gia_dung",
+  "kieu": "",
+  "layout": "mot_sheet_khong_ma",
+  "giau": true
+ },
+ {
+  "nganh": "tra_ca_phe",
+  "kieu": "",
+  "layout": "sqlite_pos",
+  "giau": true
+ },
+ {
+  "nganh": "dien_thoai",
+  "kieu": "",
+  "layout": "tron_nguon",
+  "giau": true
+ },
+ {
+  "nganh": "dien_thoai_may",
+  "kieu": "dien_thoai",
+  "layout": "so_chuyen_nganh",
+  "giau": true
+ },
+ {
+  "nganh": "van_phong_pham",
+  "kieu": "",
+  "layout": "ghi_tay_so_phu",
+  "giau": false
+ },
+ {
+  "nganh": "phu_tung",
+  "kieu": "",
+  "layout": "mot_sheet_khong_ma",
+  "giau": true
+ },
+ {
+  "nganh": "dien_nuoc",
+  "kieu": "",
+  "layout": "sqlite_pos",
+  "giau": true
+ },
+ {
+  "nganh": "bia_thu_cong",
+  "kieu": "",
+  "layout": "tron_nguon",
+  "giau": true
+ },
+ {
+  "nganh": "me_be",
+  "kieu": "diem",
+  "layout": "so_chuyen_nganh",
+  "giau": true
+ },
+ {
+  "nganh": "qua_luu_niem",
+  "kieu": "",
+  "layout": "ghi_tay_so_phu",
+  "giau": true
+ },
+ {
+  "nganh": "cau_long",
+  "kieu": "",
+  "layout": "mot_sheet_khong_ma",
+  "giau": false
+ }
+]

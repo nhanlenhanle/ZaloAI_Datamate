@@ -1,0 +1,32 @@
+[
+ {
+  "nganh": "nhac_cu",
+  "kieu": "",
+  "layout": "file_thang",
+  "giau": true
+ },
+ {
+  "nganh": "bia_thu_cong",
+  "kieu": "",
+  "layout": "file_thang",
+  "giau": true
+ },
+ {
+  "nganh": "vat_tu_y_te",
+  "kieu": "",
+  "layout": "sqlite",
+  "giau": true
+ },
+ {
+  "nganh": "dien_lanh",
+  "kieu": "",
+  "layout": "excel_thang",
+  "giau": true
+ },
+ {
+  "nganh": "linh_kien_pc",
+  "kieu": "",
+  "layout": "xlsx_nhieu_file",
+  "giau": true
+ }
+]

@@ -1,0 +1,23 @@
+hệ số 2.0 | gộp 248 / 248 ma trận | không tìm thấy 0: []
+XONG models/qwen9b_mix_merged
+total 18876420
+drwxrwxr-x 2 runner runner       4096 Nov 14 08:30 .
+drwxrwxrwx 8 runner runner       4096 Nov 14 08:25 ..
+-rw-r--r-- 1 runner runner       1570 Nov 14 08:30 .gitattributes
+-rw-rw-r-- 1 runner runner          2 Nov 14 08:30 .gop_ok
+-rw-r--r-- 1 runner runner      11544 Nov 14 08:30 LICENSE
+-rw-r--r-- 1 runner runner      77643 Nov 14 08:30 README.md
+-rw-r--r-- 1 runner runner       7756 Nov 14 08:30 chat_template.jinja
+-rw-r--r-- 1 runner runner       3126 Nov 14 08:30 config.json
+-rw-r--r-- 1 runner runner    3353259 Nov 14 08:30 merges.txt
+-rw------- 1 runner runner 5276436248 Nov 14 08:26 model.safetensors-00001-of-00004.safetensors
+-rw------- 1 runner runner 5335161536 Nov 14 08:28 model.safetensors-00002-of-00004.safetensors
+-rw------- 1 runner runner 5368717472 Nov 14 08:29 model.safetensors-00003-of-00004.safetensors
+-rw------- 1 runner runner 3325995744 Nov 14 08:30 model.safetensors-00004-of-00004.safetensors
+-rw-r--r-- 1 runner runner      79657 Nov 14 08:30 model.safetensors.index.json
+-rw-r--r-- 1 runner runner        390 Nov 14 08:30 preprocessor_config.json
+-rw-r--r-- 1 runner runner   12807982 Nov 14 08:30 tokenizer.json
+-rw-r--r-- 1 runner runner      16710 Nov 14 08:30 tokenizer_config.json
+-rw-r--r-- 1 runner runner        385 Nov 14 08:30 video_preprocessor_config.json
+-rw-r--r-- 1 runner runner    6722759 Nov 14 08:30 vocab.json
+GOP_XONG

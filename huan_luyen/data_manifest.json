@@ -1,0 +1,508 @@
+{
+  "team_name": "fall to fly",
+  "base_models": [
+    {
+      "name": "Qwen/Qwen3.5-9B",
+      "public_url": "https://huggingface.co/Qwen/Qwen3.5-9B",
+      "revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+      "release_date": "2026-02-27",
+      "license": "Apache-2.0",
+      "parameters": 9653000000,
+      "packaged_merged_path": "/models/qwen",
+      "adapter_path": "/code/training_code/qwen9b/adapter_mix",
+      "required_files": [
+        {
+          "filename": "model.safetensors-00001-of-00004.safetensors",
+          "size_bytes": 5276436216,
+          "sha256": "db6f444b43d318c92f360a13a25561a6a65b10c0631b8ed305a426dbaa6c380e"
+        },
+        {
+          "filename": "model.safetensors-00002-of-00004.safetensors",
+          "size_bytes": 5335161512,
+          "sha256": "31c7d7e2dd5d207840b31cc59083c8f4c4718959149e0358c0364052bb9a0330"
+        },
+        {
+          "filename": "model.safetensors-00003-of-00004.safetensors",
+          "size_bytes": 5368717440,
+          "sha256": "7ec36ba3a4176a44c3c0876ad80c56a2f70c84bf008d82e9501df642f17dadec"
+        },
+        {
+          "filename": "model.safetensors-00004-of-00004.safetensors",
+          "size_bytes": 3325995712,
+          "sha256": "b62b0c4cd7e44edee103ee8f4fe225f246d5e768e07bfd5f25b63a8aa1fdd0c6"
+        },
+        {
+          "filename": "tokenizer.json",
+          "size_bytes": 12807982,
+          "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42"
+        }
+      ]
+    },
+    {
+      "name": "Qwen/Qwen3.5-4B",
+      "public_url": "https://huggingface.co/Qwen/Qwen3.5-4B",
+      "revision": "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+      "release_date": "2026-02-27",
+      "license": "Apache-2.0",
+      "parameters": 4660000000,
+      "packaged_merged_path": "/models/qwen_norm4b",
+      "adapter_path": "/code/training_code/qwen4b_norm/adapter_v2",
+      "required_files": [
+        {
+          "filename": "model.safetensors-00001-of-00002.safetensors",
+          "size_bytes": 5329398688,
+          "sha256": "26a93f066e1916adb13453dae5a0c707c0fbc71299ed98779571a907b8e74c61"
+        },
+        {
+          "filename": "model.safetensors-00002-of-00002.safetensors",
+          "size_bytes": 3990429408,
+          "sha256": "cb544bd9bfae93dc59b0f22b292f5933573854a7f9b97835c67060d7d910e188"
+        },
+        {
+          "filename": "tokenizer.json",
+          "size_bytes": 12807982,
+          "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42"
+        }
+      ]
+    }
+  ],
+  "total_inference_parameters": 14313000000,
+  "datasets_summary": {
+    "qwen9b_stage1_train": {
+      "path": "/code/training_code/qwen9b/thu_train.jsonl",
+      "samples": 800,
+      "split": "train"
+    },
+    "qwen9b_stage1_val": {
+      "path": "/code/training_code/qwen9b/thu_val.jsonl",
+      "samples": 40,
+      "split": "validation"
+    },
+    "qwen9b_stage2_mix_train": {
+      "path": "/code/training_code/qwen9b/mix_train.jsonl",
+      "samples": 2200,
+      "split": "train"
+    },
+    "qwen4b_norm_train": {
+      "path": "/code/training_code/qwen4b_norm/full_gold_norm_v2_chatml_cleaned.jsonl",
+      "samples": 4669,
+      "split": "train"
+    },
+    "qwen4b_norm_val": {
+      "path": "/code/training_code/qwen4b_norm/val_norm_v2.jsonl",
+      "samples": 100,
+      "split": "validation"
+    }
+  },
+  "files": [
+    {
+      "path": "/code/training_code/HUONG_DAN.md",
+      "size_bytes": 2448,
+      "sha256": "85eaf32365046f52b242578d08ee4ae27c0f8413d1bc3b21d9d253b3906e878b"
+    },
+    {
+      "path": "/code/training_code/README.md",
+      "size_bytes": 5257,
+      "sha256": "0207095c342dcd1ef93739a5d0140ead73239e2747d674c0c37546f6b1c447c1"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/gen_1311/doi_luat_E.json",
+      "size_bytes": 440,
+      "sha256": "9b78ca5337a16127c57d05ddc9e58246d7ed036674e87bc15ec903261c742e2b"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/gen_1311/doi_luat_F.json",
+      "size_bytes": 428,
+      "sha256": "ddecff53b703481c0ab92ee401eb8994cfbeeac365a6a5435a0d8bca8d3c0876"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/gen_1311/doi_luat_G.json",
+      "size_bytes": 423,
+      "sha256": "b0a6ad505806c87ce5d3007ef117ed22667a02c109a468345e16aa9ac6c9284f"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/gen_1311/kieu_so_moi.json",
+      "size_bytes": 1373,
+      "sha256": "53401051776f63fe371d2f69879b89e06e7d48a722525fcf34f47547c5d8512f"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/gen_1311/luat_nganh.json",
+      "size_bytes": 2033,
+      "sha256": "9c30bf83bab6886500632e73c4469083f1ff2f1c21a3995ecaa8e1fc5881e1f8"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/gen_1311/nganh_moi.json",
+      "size_bytes": 5296,
+      "sha256": "b47890afd814bda95aea33afceaac1708dd0fd0a705dde5176fdfb258303dcdc"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/gen_1311/tao_mo_ta.py",
+      "size_bytes": 3569,
+      "sha256": "00cc13cc72f8d3013cae3dd133ac7da857f6c71e18dbb93f8429d5f1a228013b"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/loi_giai.py",
+      "size_bytes": 11428,
+      "sha256": "2e4b5fc3436296ca5ac7dcb28e0a94cf28cf4a5d24a92b1fa6a370b8102d953f"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/luat_doi.py",
+      "size_bytes": 28324,
+      "sha256": "4fc7ca386beb81f1129f8f23a652c04cbdbea30c341c52fbddc212b55c405a11"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/mo_rong_1311.py",
+      "size_bytes": 75317,
+      "sha256": "5141d427196beeae55122c4efa3e55fc71a8b47ce0d4c8346af64d238cad6fcd"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/nganh.py",
+      "size_bytes": 221,
+      "sha256": "d6c7f3fbf5678d124263f88087e12ccc547fcb5c3e2fcffde93f5b71951c829c"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/nganh_moi.py",
+      "size_bytes": 20389,
+      "sha256": "c1fc09913ffc46a1c5457e300ee29cc2ac487aca64f65a4ad2afb337d0b809cd"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/nganh_nhanld.py",
+      "size_bytes": 20822,
+      "sha256": "c4573c4cbfcb15dba9a5bb1ac7d5bb1e05d607f29ffcd0ca3a07486ca51d6301"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/nganh_test.py",
+      "size_bytes": 11863,
+      "sha256": "e8de4088e0f613adbf9f2875e66d6d94d098089fd7e74c3ee32e169b6dc32bfd"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/sinh.py",
+      "size_bytes": 47664,
+      "sha256": "07aa273c23c147ff7bb2ffdf6f4d2794033ec013ab02560d9ab0030732bfd98c"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/thu_vien_goc/core.py",
+      "size_bytes": 8646,
+      "sha256": "ebfb9caa8c4e2ca134d1394393c205dac597b63bb671ae49707f70c5e4e32093"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/thu_vien_goc/engine.py",
+      "size_bytes": 10294,
+      "sha256": "5a1e2aa8912e5c8705acb4f2f1b2cb2ed08a2e87c697b5ede983178cc589a5e4"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/thu_vien_goc/main.py",
+      "size_bytes": 4200,
+      "sha256": "a08eeabb6e0aa8ff82d47ced1419fd3d21baabd0e0de3d60bca72766fa8b2096"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/thu_vien_goc/qgen.py",
+      "size_bytes": 42537,
+      "sha256": "d222f14be745d827c298f5a6e35e6b6415f1803095f0ac7fc5c1b0d991d3335e"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/thu_vien_goc/rulebook.md",
+      "size_bytes": 15380,
+      "sha256": "e3edc126cdeb426ba740031c672788ef57cd619407f6ab403c10023d09a1cf51"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/thu_vien_goc/score.py",
+      "size_bytes": 3827,
+      "sha256": "4f5bfdc6172ae2df932de54050a5a35247048206e62f5fdda9320bd9dae54ac1"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/thu_vien_goc/shops.py",
+      "size_bytes": 15994,
+      "sha256": "07b9aeed8ae2973a2d71e0cdb0e87a72c2ff80d329056e0453266d36c6757426"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/thu_vien_goc/sim.py",
+      "size_bytes": 24368,
+      "sha256": "12cabe64319f5650d89efce8ad6345425df1dd496a1aaac10e30283eed456d3b"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/thu_vien_goc/verify.py",
+      "size_bytes": 11917,
+      "sha256": "728648238b58f24ad54962635f37471a10257e9de4f6b9275db7dcf7db34cfe0"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/thu_vien_goc/writers.py",
+      "size_bytes": 41637,
+      "sha256": "aa01eeb5be452cf8576753c2f97485229b6f774f7744173f18d53b0c6d151438"
+    },
+    {
+      "path": "/code/training_code/bo_sinh/train/train/calendar.csv",
+      "size_bytes": 44048,
+      "sha256": "c2579905e8b4eb152a4833b05f1f72de3e3d2c517b5d610d7664aeeb2d6a75b3"
+    },
+    {
+      "path": "/code/training_code/configs/bo_sinh_config.json",
+      "size_bytes": 309,
+      "sha256": "d6f1ad0b0337cf282bf3276c11af88e80428c56a21e4f2dc49d26945db390628"
+    },
+    {
+      "path": "/code/training_code/configs/qwen4b_norm_v2_config.json",
+      "size_bytes": 674,
+      "sha256": "baf5e8266b7e2a49007c9ecfad5ee29dc8403bb4e4f99000a7d890ffbcbd78be"
+    },
+    {
+      "path": "/code/training_code/configs/qwen9b_stage1_config.json",
+      "size_bytes": 593,
+      "sha256": "afd44e7b96829e1e6f848da115264b85089f3ccbcff2f860d10a63fac4545194"
+    },
+    {
+      "path": "/code/training_code/configs/qwen9b_stage2_mix_config.json",
+      "size_bytes": 628,
+      "sha256": "d58cfefa458c9022e8674ec2be24b7a89d977ef5ca4aab49ef8412ccbb7a2960"
+    },
+    {
+      "path": "/code/training_code/logs/bo_sinh_generation.log",
+      "size_bytes": 661,
+      "sha256": "767b310f906a91d6dcc1e2f6f2b94c091ed9db1433698ecda0124feeefc7849c"
+    },
+    {
+      "path": "/code/training_code/logs/qwen4b_norm_v2_train.log",
+      "size_bytes": 1557,
+      "sha256": "eb57f655299ef7c6990ff5244699391d0c0e413d702e4603d9e06530640d68da"
+    },
+    {
+      "path": "/code/training_code/logs/qwen9b_eval_40_heldout.log",
+      "size_bytes": 9578,
+      "sha256": "056098ea82e8f471dc01491f9757f13659cc12ae7eeca1dd1d3e71f9df3f3dfa"
+    },
+    {
+      "path": "/code/training_code/logs/qwen9b_merge_lora_248.log",
+      "size_bytes": 1494,
+      "sha256": "48c99bf0ced943dbc17653af62251430b671117cbf8049cff3e8ca4695a88a41"
+    },
+    {
+      "path": "/code/training_code/logs/qwen9b_stage1_run800_part1.log",
+      "size_bytes": 23882,
+      "sha256": "a715572defbc8fa51448361a70866903ef9828fd892f99d4f65b072a289cd4fb"
+    },
+    {
+      "path": "/code/training_code/logs/qwen9b_stage1_run800_part2.log",
+      "size_bytes": 35874,
+      "sha256": "e8631e6c7ac81d2f5ab10a9a55085c4ac2eb63ccef2f054a923eaa1ca534a64b"
+    },
+    {
+      "path": "/code/training_code/logs/qwen9b_stage1_trainer_state.json",
+      "size_bytes": 17752,
+      "sha256": "78e5f74ed0c102e1541dae8a7f2ce0f7a093856724a6fcc1242cbc253985de0f"
+    },
+    {
+      "path": "/code/training_code/logs/qwen9b_stage2_runmix.log",
+      "size_bytes": 94344,
+      "sha256": "ba5abe8113f135fe8860951eb950e11f7ff811f29f1f910c1fcfa5b7dc5d208e"
+    },
+    {
+      "path": "/code/training_code/logs/qwen9b_stage2_trainer_state.json",
+      "size_bytes": 51675,
+      "sha256": "66ced17bff20a5e540aece312bb58b4643271e6faa24da039e8d608541bd0fc3"
+    },
+    {
+      "path": "/code/training_code/make_manifest.py",
+      "size_bytes": 4558,
+      "sha256": "04ab6a81952c2c3b9b47f1a7977d38e4c790c93e0944eeebed0ff60f0d431705"
+    },
+    {
+      "path": "/code/training_code/qwen4b_norm/A_train_lora_unsloth.ipynb",
+      "size_bytes": 9147,
+      "sha256": "af268955f910cb445cd286602d579c3b1c31096ceee663ba1871fa0957df0f6d"
+    },
+    {
+      "path": "/code/training_code/qwen4b_norm/adapter_v2/README.md",
+      "size_bytes": 5206,
+      "sha256": "81d8235d188a05561f6f50a3060f9e65d63ee1ba647bf1a808c5f3cb008987e7"
+    },
+    {
+      "path": "/code/training_code/qwen4b_norm/adapter_v2/adapter_config.json",
+      "size_bytes": 1574,
+      "sha256": "7a40b769f8e2bdbe01c22e24406fe31129b132f7f933896bf290ef26c7fd7779"
+    },
+    {
+      "path": "/code/training_code/qwen4b_norm/adapter_v2/adapter_model.safetensors",
+      "size_bytes": 84972248,
+      "sha256": "6165a7773e7a26e20fd849256ab36ff2e42abe7a7cb8d0635c5738abb411e74e"
+    },
+    {
+      "path": "/code/training_code/qwen4b_norm/adapter_v2/chat_template.jinja",
+      "size_bytes": 7756,
+      "sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715"
+    },
+    {
+      "path": "/code/training_code/qwen4b_norm/adapter_v2/processor_config.json",
+      "size_bytes": 1220,
+      "sha256": "bfbc24af59a3e73a9cd0653b8d4ae758dfaec4e3e6c15dfb1c6c8ee8d5683c85"
+    },
+    {
+      "path": "/code/training_code/qwen4b_norm/adapter_v2/tokenizer.json",
+      "size_bytes": 19989339,
+      "sha256": "a5cd9732badce41de57e6efce8302930ded1c1188c5f81feb2bd6c24c4a1941f"
+    },
+    {
+      "path": "/code/training_code/qwen4b_norm/adapter_v2/tokenizer_config.json",
+      "size_bytes": 7528,
+      "sha256": "fc46dc9d6368ea7aa812a02b1c9c6fbd8e0df9692e6aef0aaf563fcb3486baad"
+    },
+    {
+      "path": "/code/training_code/qwen4b_norm/build_norm_v2_dataset_ptv2.py",
+      "size_bytes": 25408,
+      "sha256": "4ad48cb864ad007500e4325e43cbe57b04655b9dbd034e914f298bf48f2a2bbc"
+    },
+    {
+      "path": "/code/training_code/qwen4b_norm/full_gold_norm_v2_chatml_cleaned.jsonl",
+      "size_bytes": 5984848,
+      "sha256": "b5f57e43d6f381166989ba6971af6d153efbebab3d52cdb3ae96efa7d7a84ee2",
+      "num_samples": 4669
+    },
+    {
+      "path": "/code/training_code/qwen4b_norm/gop_lora.py",
+      "size_bytes": 1987,
+      "sha256": "5d132c2ac1ca88b5500120e178c06d6116a5e6ef183e806755940ee1b9e2a298"
+    },
+    {
+      "path": "/code/training_code/qwen4b_norm/train_4b.py",
+      "size_bytes": 2667,
+      "sha256": "ced3fcab246ad4413220a23b4b9242c197adccfc754a437c35861f5758935d3d"
+    },
+    {
+      "path": "/code/training_code/qwen4b_norm/val_norm_v2.jsonl",
+      "size_bytes": 128705,
+      "sha256": "e42750696359f8fa72bcaa57b6e91657e772f38e56583f04f01e4359e18d72bc",
+      "num_samples": 100
+    },
+    {
+      "path": "/code/training_code/qwen9b/adapter_mix/README.md",
+      "size_bytes": 5184,
+      "sha256": "b24b74667d1eb9c991047b4507c329613ae38707f4450446a94217081af69e96"
+    },
+    {
+      "path": "/code/training_code/qwen9b/adapter_mix/adapter_config.json",
+      "size_bytes": 1286,
+      "sha256": "a17532792bf304ba769712b6114a1f7d62630a3d9791e338643cc0e9145012f8"
+    },
+    {
+      "path": "/code/training_code/qwen9b/adapter_mix/adapter_model.safetensors",
+      "size_bytes": 173181072,
+      "sha256": "69df2629e09e1f24b13572f3e28853643c413cbf53426475aee560113d24ab6b"
+    },
+    {
+      "path": "/code/training_code/qwen9b/adapter_mix/chat_template.jinja",
+      "size_bytes": 7756,
+      "sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715"
+    },
+    {
+      "path": "/code/training_code/qwen9b/adapter_mix/tokenizer.json",
+      "size_bytes": 19989339,
+      "sha256": "a5cd9732badce41de57e6efce8302930ded1c1188c5f81feb2bd6c24c4a1941f"
+    },
+    {
+      "path": "/code/training_code/qwen9b/adapter_mix/tokenizer_config.json",
+      "size_bytes": 1465,
+      "sha256": "004893c9690cd050e617619eef34e6a13fe58ac4a3f4174f38eed5e408a89636"
+    },
+    {
+      "path": "/code/training_code/qwen9b/cham_kiem_ft.py",
+      "size_bytes": 2493,
+      "sha256": "f6a0ef6792c8f4082dd0599756085203071648b2072f8117e4d49c84a5ffed60"
+    },
+    {
+      "path": "/code/training_code/qwen9b/eval_kehoach.py",
+      "size_bytes": 2633,
+      "sha256": "f6bc38f3939af2b291a87e0a655121693437b757e1a8de92799ca99e38f574ce"
+    },
+    {
+      "path": "/code/training_code/qwen9b/gop_lora.py",
+      "size_bytes": 1987,
+      "sha256": "5d132c2ac1ca88b5500120e178c06d6116a5e6ef183e806755940ee1b9e2a298"
+    },
+    {
+      "path": "/code/training_code/qwen9b/gop_mix.sh",
+      "size_bytes": 444,
+      "sha256": "4412621ae7425e004863d3e4573a6039e8c0b09a268143b4cd456cfa9165e449"
+    },
+    {
+      "path": "/code/training_code/qwen9b/make_plan_data.py",
+      "size_bytes": 5157,
+      "sha256": "53c4b2a0b25f1af851e671903ec7289e41acb520ddaadf0a996428686280165c"
+    },
+    {
+      "path": "/code/training_code/qwen9b/make_sql_data.py",
+      "size_bytes": 4970,
+      "sha256": "23f44c1f6fda281a0ca0f99cc1cfcfb0846635d1af72e337b6753b816e105278"
+    },
+    {
+      "path": "/code/training_code/qwen9b/mix_train.jsonl",
+      "size_bytes": 68902046,
+      "sha256": "8750117d39b005b6c36f029d50c841672cc5221d256feb4ac830ea0d1819ce6c",
+      "num_samples": 2200
+    },
+    {
+      "path": "/code/training_code/qwen9b/rbd_sql_A.jsonl",
+      "size_bytes": 6375136,
+      "sha256": "015a6fb5398b663f32077b6f379d854a471337d185000b1525040d7ea2d7b889",
+      "num_samples": 231
+    },
+    {
+      "path": "/code/training_code/qwen9b/rbd_sql_C.jsonl",
+      "size_bytes": 4426240,
+      "sha256": "695c3b59bc5b3e12a8ede03532a2acc4c6b7d11fda75dde9a814ed3aa2724aed",
+      "num_samples": 159
+    },
+    {
+      "path": "/code/training_code/qwen9b/sql_gen_train.jsonl",
+      "size_bytes": 93726024,
+      "sha256": "a62957d78a68ba99b07803c05245658458727214bedcf2d6908aee896f388fa5",
+      "num_samples": 3040
+    },
+    {
+      "path": "/code/training_code/qwen9b/sql_pv2.jsonl",
+      "size_bytes": 39943994,
+      "sha256": "de639ab9096a33179fa8f5ecd2f0e4ddc7c2c1f8c0c54a3ed8cd87a1a940d54c",
+      "num_samples": 1303
+    },
+    {
+      "path": "/code/training_code/qwen9b/test_shops.txt",
+      "size_bytes": 127,
+      "sha256": "c6e11524c2dfcc674b5796a8ed6b1abba08a5bbcda1a5597f81081b8ba6829cd"
+    },
+    {
+      "path": "/code/training_code/qwen9b/thu_train.jsonl",
+      "size_bytes": 26817830,
+      "sha256": "dda1240730796eb262f4f836b948fa79b57a2f7119de01035f77bc9a70e5a9b7",
+      "num_samples": 800
+    },
+    {
+      "path": "/code/training_code/qwen9b/thu_val.jsonl",
+      "size_bytes": 1343434,
+      "sha256": "5ee1b51f15d044c51f047fc860f3d9c8213dc4e56fbb2ffb08b9739b6996c27d",
+      "num_samples": 40
+    },
+    {
+      "path": "/code/training_code/qwen9b/train_800.sh",
+      "size_bytes": 646,
+      "sha256": "396a9b727faf450c3a642b732881fd06b45bae85744687942bd8e3e644795b17"
+    },
+    {
+      "path": "/code/training_code/qwen9b/train_kehoach.py",
+      "size_bytes": 8899,
+      "sha256": "29fdf73e932616d88b7146f875f9646e35054dcdf77f2c1a2c422911eed9bc7d"
+    },
+    {
+      "path": "/code/training_code/qwen9b/train_mix.sh",
+      "size_bytes": 839,
+      "sha256": "9c80966d78625669b745c43dcca3a9dfe9390e975fb6d7a0fd80abad3c9520cc"
+    },
+    {
+      "path": "/code/training_code/requirements.txt",
+      "size_bytes": 163,
+      "sha256": "b7d27674e2a67998d14ae932b67d75ae05954adf1a4b6e649941ed19b75b149e"
+    },
+    {
+      "path": "/code/training_code/train.sh",
+      "size_bytes": 718,
+      "sha256": "f1251715580db050823bcce8052212841be1206e5ac7cfabba26a48a2818473d"
+    }
+  ]
+}

@@ -1,0 +1,374 @@
+pc-3090-Precision-Tower-7910
+name, memory.used [MiB]
+NVIDIA GeForce RTX 3090 Ti, 28 MiB
+800 mẫu | token trung vị 9703 max 10832 tổng 7734867
+
+Loading weights:   0%|          | 0/427 [00:00<?, ?it/s]
+Loading weights:   0%|          | 1/427 [00:00<02:29,  2.86it/s]
+Loading weights:   0%|          | 2/427 [00:00<02:27,  2.88it/s]
+Loading weights:   3%|▎         | 13/427 [00:00<00:17, 23.36it/s]
+Loading weights:   7%|▋         | 29/427 [00:00<00:07, 51.08it/s]
+Loading weights:  11%|█         | 47/427 [00:01<00:04, 77.81it/s]
+Loading weights:  16%|█▌        | 67/427 [00:01<00:03, 106.64it/s]
+Loading weights:  21%|██        | 90/427 [00:01<00:02, 134.70it/s]
+Loading weights:  25%|██▌       | 107/427 [00:01<00:02, 130.80it/s]
+Loading weights:  30%|███       | 130/427 [00:01<00:01, 155.43it/s]
+Loading weights:  35%|███▍      | 148/427 [00:01<00:01, 154.11it/s]
+Loading weights:  39%|███▉      | 168/427 [00:01<00:01, 163.24it/s]
+Loading weights:  44%|████▎     | 186/427 [00:01<00:01, 163.34it/s]
+Loading weights:  48%|████▊     | 204/427 [00:01<00:01, 161.29it/s]
+Loading weights:  52%|█████▏    | 223/427 [00:02<00:01, 169.12it/s]
+Loading weights:  56%|█████▋    | 241/427 [00:02<00:01, 143.55it/s]
+Loading weights:  60%|██████    | 258/427 [00:02<00:01, 146.03it/s]
+Loading weights:  65%|██████▌   | 278/427 [00:02<00:00, 159.15it/s]
+Loading weights:  69%|██████▉   | 295/427 [00:02<00:00, 156.28it/s]
+Loading weights:  73%|███████▎  | 312/427 [00:02<00:00, 153.92it/s]
+Loading weights:  78%|███████▊  | 332/427 [00:02<00:00, 165.27it/s]
+Loading weights:  83%|████████▎ | 355/427 [00:02<00:00, 178.44it/s]
+Loading weights:  88%|████████▊ | 374/427 [00:03<00:00, 163.12it/s]
+Loading weights:  93%|█████████▎| 397/427 [00:03<00:00, 178.10it/s]
+Loading weights:  97%|█████████▋| 416/427 [00:03<00:00, 167.87it/s]
+Loading weights: 100%|██████████| 427/427 [00:03<00:00, 128.86it/s]
+nạp model 7s | Qwen3_5ForCausalLM | 7.1 GB
+trainable params: 43,278,336 || all params: 8,997,081,600 || trainable%: 0.4810
+
+  0%|          | 0/100 [00:00<?, ?it/s][transformers] `causal_conv1d_fn` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+bước 1/100: 105s | còn ~2.9 giờ | bộ nhớ đỉnh 21.8 GB
+
+  1%|          | 1/100 [01:45<2:53:33, 105.19s/it]
+                                                  
+
+  1%|          | 1/100 [01:45<2:53:33, 105.19s/it]{'loss': '0.7334', 'grad_norm': '20.58', 'learning_rate': '0', 'epoch': '0.01'}
+bước 2/100: 102s | còn ~2.8 giờ | bộ nhớ đỉnh 21.8 GB
+
+  2%|▏         | 2/100 [03:27<2:48:52, 103.39s/it]
+                                                  
+
+  2%|▏         | 2/100 [03:27<2:48:52, 103.39s/it]{'loss': '2.993', 'grad_norm': '29.52', 'learning_rate': '2e-05', 'epoch': '0.02'}
+bước 3/100: 104s | còn ~2.8 giờ | bộ nhớ đỉnh 21.8 GB
+
+  3%|▎         | 3/100 [05:11<2:47:52, 103.84s/it]
+                                                  
+
+  3%|▎         | 3/100 [05:11<2:47:52, 103.84s/it]{'loss': '0.7347', 'grad_norm': '12.04', 'learning_rate': '4e-05', 'epoch': '0.03'}
+bước 4/100: 104s | còn ~2.8 giờ | bộ nhớ đỉnh 21.8 GB
+
+  4%|▍         | 4/100 [06:56<2:46:27, 104.04s/it]
+                                                  
+
+  4%|▍         | 4/100 [06:56<2:46:27, 104.04s/it]{'loss': '0.31', 'grad_norm': '6.567', 'learning_rate': '6e-05', 'epoch': '0.04'}
+bước 5/100: 103s | còn ~2.7 giờ | bộ nhớ đỉnh 21.8 GB
+
+  5%|▌         | 5/100 [08:38<2:43:53, 103.51s/it]
+                                                  
+
+  5%|▌         | 5/100 [08:38<2:43:53, 103.51s/it]{'loss': '1.487', 'grad_norm': '10.4', 'learning_rate': '8e-05', 'epoch': '0.05'}
+bước 6/100: 106s | còn ~2.8 giờ | bộ nhớ đỉnh 21.8 GB
+
+  6%|▌         | 6/100 [10:24<2:43:35, 104.42s/it]
+                                                  
+
+  6%|▌         | 6/100 [10:24<2:43:35, 104.42s/it]{'loss': '0.2655', 'grad_norm': '4.625', 'learning_rate': '0.0001', 'epoch': '0.06'}
+bước 7/100: 102s | còn ~2.6 giờ | bộ nhớ đỉnh 21.8 GB
+
+  7%|▋         | 7/100 [12:06<2:40:28, 103.53s/it]
+                                                  
+
+  7%|▋         | 7/100 [12:06<2:40:28, 103.53s/it]{'loss': '0.0367', 'grad_norm': '1.548', 'learning_rate': '9.997e-05', 'epoch': '0.07'}
+bước 8/100: 103s | còn ~2.6 giờ | bộ nhớ đỉnh 21.8 GB
+
+  8%|▊         | 8/100 [13:49<2:38:17, 103.24s/it]
+                                                  
+
+  8%|▊         | 8/100 [13:49<2:38:17, 103.24s/it]{'loss': '0.3254', 'grad_norm': '5.69', 'learning_rate': '9.989e-05', 'epoch': '0.08'}
+bước 9/100: 101s | còn ~2.5 giờ | bộ nhớ đỉnh 21.8 GB
+
+  9%|▉         | 9/100 [15:29<2:35:20, 102.42s/it]
+                                                  
+
+  9%|▉         | 9/100 [15:29<2:35:20, 102.42s/it]{'loss': '0.3288', 'grad_norm': '4.22', 'learning_rate': '9.975e-05', 'epoch': '0.09'}
+bước 10/100: 104s | còn ~2.6 giờ | bộ nhớ đỉnh 21.8 GB
+
+ 10%|█         | 10/100 [17:13<2:34:23, 102.93s/it]
+                                                   
+
+ 10%|█         | 10/100 [17:13<2:34:23, 102.93s/it]{'loss': '0.06174', 'grad_norm': '1.84', 'learning_rate': '9.956e-05', 'epoch': '0.1'}
+bước 11/100: 102s | còn ~2.5 giờ | bộ nhớ đỉnh 21.9 GB
+
+ 11%|█         | 11/100 [18:59<2:34:02, 103.85s/it]
+                                                   
+
+ 11%|█         | 11/100 [18:59<2:34:02, 103.85s/it]{'loss': '0.1052', 'grad_norm': '4.859', 'learning_rate': '9.932e-05', 'epoch': '0.11'}
+bước 12/100: 106s | còn ~2.6 giờ | bộ nhớ đỉnh 21.9 GB
+
+ 12%|█▏        | 12/100 [20:45<2:33:09, 104.43s/it]
+                                                   
+
+ 12%|█▏        | 12/100 [20:45<2:33:09, 104.43s/it]{'loss': '0.07559', 'grad_norm': '5.299', 'learning_rate': '9.902e-05', 'epoch': '0.12'}
+bước 13/100: 103s | còn ~2.5 giờ | bộ nhớ đỉnh 21.9 GB
+
+ 13%|█▎        | 13/100 [22:28<2:30:46, 103.98s/it]
+                                                   
+
+ 13%|█▎        | 13/100 [22:28<2:30:46, 103.98s/it]{'loss': '0.7452', 'grad_norm': '16.03', 'learning_rate': '9.867e-05', 'epoch': '0.13'}
+bước 14/100: 105s | còn ~2.5 giờ | bộ nhớ đỉnh 22.4 GB
+
+ 14%|█▍        | 14/100 [24:13<2:29:41, 104.43s/it]
+                                                   
+
+ 14%|█▍        | 14/100 [24:13<2:29:41, 104.43s/it]{'loss': '0.6619', 'grad_norm': '12.63', 'learning_rate': '9.826e-05', 'epoch': '0.14'}
+bước 15/100: 104s | còn ~2.4 giờ | bộ nhớ đỉnh 22.4 GB
+
+ 15%|█▌        | 15/100 [25:57<2:27:41, 104.25s/it]
+                                                   
+
+ 15%|█▌        | 15/100 [25:57<2:27:41, 104.25s/it]{'loss': '0.1519', 'grad_norm': '5.577', 'learning_rate': '9.78e-05', 'epoch': '0.15'}
+bước 16/100: 103s | còn ~2.4 giờ | bộ nhớ đỉnh 22.4 GB
+
+ 16%|█▌        | 16/100 [27:41<2:25:38, 104.04s/it]
+                                                   
+
+ 16%|█▌        | 16/100 [27:41<2:25:38, 104.04s/it]{'loss': '0.06056', 'grad_norm': '2.538', 'learning_rate': '9.729e-05', 'epoch': '0.16'}
+bước 17/100: 103s | còn ~2.4 giờ | bộ nhớ đỉnh 22.4 GB
+
+ 17%|█▋        | 17/100 [29:24<2:23:42, 103.89s/it]
+                                                   
+
+ 17%|█▋        | 17/100 [29:24<2:23:42, 103.89s/it]{'loss': '0.1389', 'grad_norm': '2.814', 'learning_rate': '9.673e-05', 'epoch': '0.17'}
+bước 18/100: 100s | còn ~2.3 giờ | bộ nhớ đỉnh 22.4 GB
+
+ 18%|█▊        | 18/100 [31:05<2:20:31, 102.82s/it]
+                                                   
+
+ 18%|█▊        | 18/100 [31:05<2:20:31, 102.82s/it]{'loss': '0.1821', 'grad_norm': '3.976', 'learning_rate': '9.611e-05', 'epoch': '0.18'}
+bước 19/100: 106s | còn ~2.4 giờ | bộ nhớ đỉnh 22.4 GB
+
+ 19%|█▉        | 19/100 [32:50<2:19:56, 103.66s/it]
+                                                   
+
+ 19%|█▉        | 19/100 [32:50<2:19:56, 103.66s/it]{'loss': '0.1383', 'grad_norm': '4.02', 'learning_rate': '9.545e-05', 'epoch': '0.19'}
+bước 20/100: 101s | còn ~2.2 giờ | bộ nhớ đỉnh 22.4 GB
+
+ 20%|██        | 20/100 [34:31<2:17:13, 102.92s/it]
+                                                   
+
+ 20%|██        | 20/100 [34:31<2:17:13, 102.92s/it]{'loss': '0.06651', 'grad_norm': '1.839', 'learning_rate': '9.474e-05', 'epoch': '0.2'}
+bước 21/100: 104s | còn ~2.3 giờ | bộ nhớ đỉnh 22.4 GB
+
+ 21%|██        | 21/100 [36:20<2:17:42, 104.59s/it]
+                                                   
+
+ 21%|██        | 21/100 [36:20<2:17:42, 104.59s/it]{'loss': '0.292', 'grad_norm': '3.727', 'learning_rate': '9.397e-05', 'epoch': '0.21'}
+bước 22/100: 104s | còn ~2.3 giờ | bộ nhớ đỉnh 22.4 GB
+
+ 22%|██▏       | 22/100 [38:04<2:15:49, 104.48s/it]
+                                                   
+
+ 22%|██▏       | 22/100 [38:04<2:15:49, 104.48s/it]{'loss': '0.0187', 'grad_norm': '1.15', 'learning_rate': '9.316e-05', 'epoch': '0.22'}
+bước 23/100: 106s | còn ~2.3 giờ | bộ nhớ đỉnh 22.4 GB
+
+ 23%|██▎       | 23/100 [39:50<2:14:45, 105.01s/it]
+                                                   
+
+ 23%|██▎       | 23/100 [39:50<2:14:45, 105.01s/it]{'loss': '0.1427', 'grad_norm': '8.079', 'learning_rate': '9.23e-05', 'epoch': '0.23'}
+bước 24/100: 105s | còn ~2.2 giờ | bộ nhớ đỉnh 22.4 GB
+
+ 24%|██▍       | 24/100 [41:36<2:13:07, 105.10s/it]
+                                                   
+
+ 24%|██▍       | 24/100 [41:36<2:13:07, 105.10s/it]{'loss': '0.2123', 'grad_norm': '5.24', 'learning_rate': '9.14e-05', 'epoch': '0.24'}
+bước 25/100: 103s | còn ~2.2 giờ | bộ nhớ đỉnh 22.4 GB
+
+ 25%|██▌       | 25/100 [43:19<2:10:42, 104.57s/it]
+                                                   
+
+ 25%|██▌       | 25/100 [43:19<2:10:42, 104.57s/it]{'loss': '0.2719', 'grad_norm': '5.169', 'learning_rate': '9.045e-05', 'epoch': '0.25'}
+bước 26/100: 106s | còn ~2.2 giờ | bộ nhớ đỉnh 22.4 GB
+
+ 26%|██▌       | 26/100 [45:05<2:09:20, 104.88s/it]
+                                                   
+
+ 26%|██▌       | 26/100 [45:05<2:09:20, 104.88s/it]{'loss': '0.008336', 'grad_norm': '0.6686', 'learning_rate': '8.946e-05', 'epoch': '0.26'}
+bước 27/100: 106s | còn ~2.1 giờ | bộ nhớ đỉnh 22.4 GB
+
+ 27%|██▋       | 27/100 [46:50<2:07:55, 105.15s/it]
+                                                   
+
+ 27%|██▋       | 27/100 [46:50<2:07:55, 105.15s/it]{'loss': '0.11', 'grad_norm': '3.112', 'learning_rate': '8.842e-05', 'epoch': '0.27'}
+bước 28/100: 103s | còn ~2.1 giờ | bộ nhớ đỉnh 22.4 GB
+
+ 28%|██▊       | 28/100 [48:33<2:05:21, 104.46s/it]
+                                                   
+
+ 28%|██▊       | 28/100 [48:33<2:05:21, 104.46s/it]{'loss': '0.03677', 'grad_norm': '2.875', 'learning_rate': '8.734e-05', 'epoch': '0.28'}
+bước 29/100: 106s | còn ~2.1 giờ | bộ nhớ đỉnh 22.4 GB
+
+ 29%|██▉       | 29/100 [50:19<2:04:11, 104.95s/it]
+                                                   
+
+ 29%|██▉       | 29/100 [50:19<2:04:11, 104.95s/it]{'loss': '0.1059', 'grad_norm': '2.106', 'learning_rate': '8.622e-05', 'epoch': '0.29'}
+Traceback (most recent call last):
+  File "/code/training_code/qwen9b/train_kehoach.py", line 102, in <module>
+    trainer.train(resume_from_checkpoint=bool(ckpts) and not a.smoke)
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/transformers/trainer.py", line 1559, in train
+    return inner_training_loop(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/transformers/trainer.py", line 1643, in _inner_training_loop
+    self._run_epoch(
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/transformers/trainer.py", line 1889, in _run_epoch
+    tr_loss_step = self.training_step(model, inputs, num_items_in_batch)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/transformers/trainer.py", line 2062, in training_step
+    loss = self.compute_loss(model, inputs, num_items_in_batch=num_items_in_batch)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/train_kehoach.py", line 92, in compute_loss
+    out = model(input_ids=inputs["input_ids"], attention_mask=inputs.get("attention_mask"), logits_to_keep=n + 1)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/accelerate/utils/operations.py", line 943, in forward
+    return model_forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/accelerate/utils/operations.py", line 931, in __call__
+    return convert_to_fp32(self.model_forward(*args, **kwargs))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/torch/amp/autocast_mode.py", line 44, in decorate_autocast
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/peft/peft_model.py", line 2120, in forward
+    return self.base_model(
+           ^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/peft/tuners/tuners_utils.py", line 359, in forward
+    return self.model(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/transformers/utils/generic.py", line 943, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/transformers/models/qwen3_5/modeling_qwen3_5.py", line 1710, in forward
+    outputs: BaseModelOutputWithPast = self.model(
+                                       ^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/transformers/utils/generic.py", line 1081, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/transformers/utils/output_capturing.py", line 287, in wrapper
+    outputs = func(self, *args, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/transformers/models/qwen3_5/modeling_qwen3_5.py", line 1279, in forward
+    hidden_states = decoder_layer(
+                    ^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/transformers/modeling_layers.py", line 110, in __call__
+    return self._gradient_checkpointing_func(partial(super().__call__, **kwargs), *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/torch/_compile.py", line 54, in inner
+    return disable_fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/torch/_dynamo/eval_frame.py", line 1263, in _fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/torch/utils/checkpoint.py", line 512, in checkpoint
+    ret = function(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/transformers/models/qwen3_5/modeling_qwen3_5.py", line 876, in forward
+    hidden_states = self.linear_attn(
+                    ^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/transformers/integrations/accelerate.py", line 1012, in wrapped
+    output = forward_func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/transformers/models/qwen3_5/modeling_qwen3_5.py", line 626, in forward
+    core_attn_out, last_recurrent_state = torch_chunk_gated_delta_rule(
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/transformers/integrations/hub_kernels.py", line 1051, in wrapped
+    return implementation(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/torch/_dynamo/eval_frame.py", line 1263, in _fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/fla/backends.py", line 200, in wrapper
+    return default_function(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/fla/ops/gated_delta_rule/chunk.py", line 571, in chunk_gated_delta_rule
+    o, final_state = ChunkGatedDeltaRuleFunction.apply(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/torch/autograd/function.py", line 596, in apply
+    return super().apply(*args, **kwargs)  # type: ignore[misc]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/fla/utils/decorators.py", line 152, in wrapper
+    return fn(*processed_args, **processed_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/torch/amp/autocast_mode.py", line 481, in decorate_fwd
+    return fwd(*args, **kwargs)  # pyrefly: ignore [not-callable]
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/fla/ops/gated_delta_rule/chunk.py", line 283, in forward
+    q, q_rstd = l2norm_fwd(q)
+                ^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/torch/_dynamo/eval_frame.py", line 1263, in _fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/fla/backends.py", line 200, in wrapper
+    return default_function(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/fla/modules/norm/l2norm.py", line 136, in l2norm_fwd
+    l2norm_fwd_kernel[grid](x=x, y=y, rstd=rstd, eps=eps, T=T, D=D, BD=BD, NB=NB)
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/triton/runtime/jit.py", line 370, in <lambda>
+    return lambda *args, **kwargs: self.run(grid=grid, warmup=False, *args, **kwargs)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/fla/ops/utils/cache.py", line 378, in run
+    return super().run(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/triton/runtime/autotuner.py", line 238, in run
+    used_cached_result = self.check_disk_cache(key, pruned_configs, benchmark)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/triton/runtime/autotuner.py", line 202, in check_disk_cache
+    bench_fn()
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/triton/runtime/autotuner.py", line 229, in benchmark
+    timings = {config: self._bench(*args, config=config, **kwargs) for config in pruned_configs}
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/triton/runtime/autotuner.py", line 164, in _bench
+    return self.do_bench(kernel_call, quantiles=(0.5, 0.2, 0.8))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/triton/testing.py", line 149, in do_bench
+    fn()
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/triton/runtime/autotuner.py", line 150, in kernel_call
+    self.fn.run(
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/triton/runtime/jit.py", line 744, in run
+    kernel.run(grid_0, grid_1, grid_2, stream, kernel.function, kernel.packed_metadata, launch_metadata,
+  File "/code/training_code/qwen9b/venv/lib/python3.12/site-packages/triton/backends/nvidia/driver.py", line 713, in __call__
+    self.launch(gridX, gridY, gridZ, stream, function, self.launch_cooperative_grid, self.launch_pdl,
+RuntimeError: Triton Error [CUDA]: out of memory
+
+ 29%|██▉       | 29/100 [50:27<2:03:31, 104.39s/it]
+TRAIN_XONG

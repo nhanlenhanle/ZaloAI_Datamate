@@ -1,0 +1,21 @@
+{
+  "base_model": "Qwen/Qwen3.5-9B",
+  "revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+  "train_file": "/code/training_code/qwen9b/thu_train.jsonl",
+  "val_file": "/code/training_code/qwen9b/thu_val.jsonl",
+  "num_train_samples": 800,
+  "num_val_samples": 40,
+  "qlora_4bit": "nf4",
+  "compute_dtype": "bfloat16",
+  "lora_r": 16,
+  "lora_alpha": 32,
+  "lora_dropout": 0.05,
+  "learning_rate": 0.0001,
+  "batch_size": 1,
+  "gradient_accumulation_steps": 8,
+  "num_epochs": 1,
+  "max_seq_len": 11264,
+  "seed": 42,
+  "hardware": "1x NVIDIA RTX 3090 Ti 24GB",
+  "runtime_seconds": 8120
+}

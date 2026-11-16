@@ -1,0 +1,16 @@
+{
+  "generator_entry": "/code/training_code/bo_sinh/sinh.py",
+  "gen_train": {
+    "n_shops": 76,
+    "start_id": 301,
+    "seed": 7,
+    "questions_per_shop": 52
+  },
+  "bo_tu_sinh_v2": {
+    "n_shops": 36,
+    "start_id": 501,
+    "seed": 19,
+    "questions_per_shop": 68,
+    "layout_extended": true
+  }
+}

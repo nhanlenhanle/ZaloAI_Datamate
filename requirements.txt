@@ -1,0 +1,5 @@
+# chạy ngoài Docker (Python >= 3.10); trong image các bản này được ghim ở docker/Dockerfile
+duckdb==1.5.6
+pandas==2.3.3
+python-calamine==0.8.3
+pytest
