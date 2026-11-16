@@ -77,6 +77,14 @@ Toàn bộ mô hình sử dụng trong inference đều là mã nguồn mở gi�
 
 ## 5. Run Instructions (Hướng dẫn chạy chấm bài)
 
+**Docker image** (đã đóng gói sẵn code + trọng số mô hình): [Tải từ Google Drive](https://drive.google.com/file/d/1TbEGKDA55_Z6gLgIwTfZStheVROH7ItT/view?usp=sharing)
+
+Sau khi tải về, nạp image vào Docker:
+
+```bash
+docker load -i <file_image_vua_tai>
+```
+
 Chạy bằng đúng lệnh chấm tiêu chuẩn của BTC (Mục 10 Docker Submission Guide):
 
 ```bash
